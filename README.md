@@ -38,13 +38,13 @@
 - [Features](#-features)
 - [Tech Stack](#-tech-stack)
 - [High-Level Architecture](#-high-level-architecture) *(⭐ Must See)*
-- [Request Lifecycle](#-request-lifecycle) *(⭐ Must See)*
-- [Video Pipeline](#-video-pipeline) *(⭐ Must See)*
-- [Authentication Flow](#-authentication-flow) *(⭐ Must See)*
-- [Payment Flow](#-payment-flow) *(⭐ Must See)*
+- [Request Lifecycle](#-request-lifecycle)
+- [Video Pipeline](#-video-pipeline) 
+- [Authentication Flow](#-authentication-flow)
+- [Payment Flow](#-payment-flow)
 - [Folder Structure](#-folder-structure)
 - [API Documentation](#-api-documentation)
-- [Database Design](#-database-design) *(⭐ Must See)*
+- [Database Design](#-database-design)
 - [Security Highlights](#-security-highlights) *(⭐ Must See)*
 - [Video Delivery](#-video-delivery)
 - [Performance Optimizations](#-performance-optimizations)
@@ -54,7 +54,7 @@
 - [Docker](#-docker)
 - [Testing](#-testing)
 - [Architecture Documents](#-architecture-documents) *(⭐ Must See)*
-- [Engineering Decisions](#-engineering-decisions) *(⭐ Must See)*
+- [Engineering Decisions](#-engineering-decisions)
 - [Challenges Solved](#-challenges-solved)
 
 ---
@@ -1013,7 +1013,6 @@ Auth tokens live in memory (Zustand), not localStorage. This prevents XSS from r
 
 
 ---
-
 <div align="center">
 
 ## Final Summary

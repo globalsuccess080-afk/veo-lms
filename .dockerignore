@@ -1,0 +1,15 @@
+node_modules
+apps/client/node_modules
+apps/server/node_modules
+packages/shared/node_modules
+apps/client/dist
+apps/server/dist
+packages/shared/dist
+.env
+.git
+.gitignore
+.cursorrules
+README.md
+*.md
+.agents
+.codex

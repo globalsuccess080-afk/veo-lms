@@ -1,0 +1,52 @@
+import { Enrollment } from './enrollment.model'
+import { Course } from '../course/course.model'
+import { ApiError } from '../../utils/apiError'
+
+export async function getMyEnrollments(userId: string) {
+  const enrollments = await Enrollment.find({ userId, isActive: true })
+    .populate('courseId')
+    .sort({ enrolledAt: -1 })
+    .lean()
+
+  return enrollments.map((e) => {
+    const course = e.courseId as { _id?: { toString(): string }; title?: string; slug?: string }
+    return {
+      id: e._id.toString(),
+      userId: e.userId.toString(),
+      courseId: course?._id?.toString() || String(e.courseId),
+      enrolledAt: e.enrolledAt.toISOString(),
+      completedAt: e.completedAt?.toISOString() || null,
+      isActive: e.isActive,
+      progress: e.progress,
+      course: e.courseId
+    }
+  })
+}
+
+export async function checkEnrollment(userId: string, courseId: string) {
+  const enrollment = await Enrollment.findOne({ userId, courseId, isActive: true })
+  return { enrolled: !!enrollment, enrollment }
+}
+
+export async function createEnrollment(userId: string, courseId: string, paymentId: string) {
+  const existing = await Enrollment.findOne({ userId, courseId })
+  if (existing) throw new ApiError(409, 'Already enrolled')
+
+  const enrollment = await Enrollment.create({ userId, courseId, paymentId })
+  const course = await Course.findByIdAndUpdate(courseId, { $inc: { enrollmentCount: 1 } })
+  
+  const { User } = await import('../user/user.model')
+  const user = await User.findById(userId)
+
+  if (user && course) {
+    const { emailQueue } = await import('../email/email.queue')
+    const { generateEnrollmentEmail } = await import('../email/templates')
+    await emailQueue.add('sendEmail', {
+      to: user.getDecryptedEmail(),
+      subject: `Welcome to ${course.title}`,
+      html: generateEnrollmentEmail(course.title)
+    })
+  }
+
+  return enrollment
+}

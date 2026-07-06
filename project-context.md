@@ -1,0 +1,3052 @@
+# VeoLMS — Complete Product Requirements Document (PRD)
+## Hackathon / Challenge Submission · Senior Engineer Edition
+> **Version:** 1.1.0 | **Prepared for:** VeoLMS Core Team Selection Challenge | **Deadline:** 15 July 2026
+> **Audience:** This document is AI-friendly and developer-friendly. Every section is self-contained. AI agents can parse each section independently.
+
+---
+
+## TABLE OF CONTENTS
+1. [Project Overview & Constraints](#1-project-overview--constraints)
+2. [Tech Stack — Final Decisions](#2-tech-stack--final-decisions)
+3. [Project Architecture](#3-project-architecture)
+4. [Folder Structure](#4-folder-structure)
+5. [Database Design (MongoDB Schemas)](#5-database-design-mongodb-schemas)
+6. [Authentication & Authorization](#6-authentication--authorization)
+7. [AES-GCM Encryption Strategy](#7-aes-gcm-encryption-strategy)
+8. [Theme System (Light, Dark + 5 Color Themes)](#8-theme-system-light-dark--5-color-themes)
+9. [UI/UX Design System](#9-uiux-design-system)
+10. [API Design (REST Endpoints)](#10-api-design-rest-endpoints)
+11. [Video Pipeline & HLS Streaming](#11-video-pipeline--hls-streaming)
+12. [Custom Video Player](#12-custom-video-player)
+13. [Caching Strategy (Redis)](#13-caching-strategy-redis)
+14. [Job Queue Strategy (BullMQ)](#14-job-queue-strategy-bullmq)
+15. [Payment Integration (Razorpay)](#15-payment-integration-razorpay)
+16. [Student Dashboard](#16-student-dashboard)
+17. [Admin Dashboard](#17-admin-dashboard)
+18. [Export / Import Feature (Admin)](#18-export--import-feature-admin)
+19. [Security Architecture](#19-security-architecture)
+20. [Cost Optimization Strategy](#20-cost-optimization-strategy)
+21. [Testing Strategy](#21-testing-strategy)
+22. [Deployment Strategy](#22-deployment-strategy)
+23. [Performance Targets](#23-performance-targets)
+24. [What NOT To Do (Anti-Patterns)](#24-what-not-to-do-anti-patterns)
+25. [Development Phases & Sprint Plan](#25-development-phases--sprint-plan)
+26. [Environment Variables Reference](#26-environment-variables-reference)
+27. [Email Notifications (Nodemailer)](#27-email-notifications-nodemailer)
+28. [Real-Time In-App Notifications (WebSocket)](#28-real-time-in-app-notifications-websocket)
+
+---
+
+## 1. PROJECT OVERVIEW & CONSTRAINTS
+
+### 1.1 What We Are Building
+A **production-like LMS prototype** for the VeoLMS core team selection challenge. This is NOT a real production SaaS product. It is a high-quality, polished prototype that demonstrates real-world engineering decisions.
+
+### 1.2 Scope Boundaries (CRITICAL — Read Before Coding)
+| What We INCLUDE | What We EXCLUDE |
+|---|---|
+| 4–5 courses with 8–12 lessons each | Hundreds of courses |
+| YouTube-embedded or HLS videos | Raw uploading of massive video files |
+| Razorpay test mode payments | Real live payment processing |
+| Redis-powered caching for speed | Multi-region Redis clusters |
+| BullMQ for video processing jobs | Kubernetes-level autoscaling |
+| AES-GCM encrypted sensitive fields | Full E2E encrypted messaging |
+| 7 themes (light, dark, green, pink, blue, yellow, rose) | Theme builder / custom user themes |
+| Export/Import (JSON/CSV) in Admin | Complex ETL pipelines |
+| HLS multi-quality video (360p/720p/1080p) | Live streaming |
+| Email notifications (signup, enrollment, updates) | Full marketing email platform |
+| In-app WebSocket notifications | Push notifications (FCM/APNs) |
+
+### 1.3 Core Philosophy
+```
+Speed > Feature Count
+Polish > Quantity
+Explainability > Complexity
+Security > Convenience (always)
+```
+
+### 1.4 Hackathon Mindset
+- Every decision must be explainable in a 90-minute call
+- Code must be readable by another developer in < 5 minutes per file
+- No over-engineering. No under-engineering.
+- Every layer (frontend, backend, DB, infra) must feel intentional
+
+---
+
+## 2. TECH STACK — FINAL DECISIONS
+
+### 2.1 Frontend
+| Tool | Version | Reason |
+|---|---|---|
+| React | 19.x (latest) | Latest concurrent features, improved compiler support |
+| TypeScript | 5.x (latest) | Type safety, better DX, fewer runtime bugs |
+| Vite | latest | Instant HMR, fastest dev server |
+| TanStack Query (React Query) | latest (v5+) | Server state, caching, background refetch |
+| Zustand | latest | Lightweight global state (auth, theme, player state) |
+| React Router DOM | latest (v7) | Client-side routing, protected routes |
+| Tailwind CSS | latest (v4) | Utility-first, works perfectly with CSS variables for theming |
+| Socket.IO Client | latest | Real-time in-app notifications via WebSocket |
+| Shadcn/UI | latest | Accessible, customizable components (Radix-based) |
+| Plyr (React Wrapper) or Vidstack | latest | Professional video player with keyboard shortcuts |
+| Axios | latest | HTTP client with interceptors |
+| Framer Motion | latest | Smooth animations, page transitions |
+| React Hook Form + Zod | latest | Form handling + schema validation |
+| Sonner | latest | Toast notifications |
+| Lucide React | latest | Icon library |
+| date-fns | latest | Date utilities |
+| papaparse | latest | CSV parsing for import/export |
+
+### 2.2 Backend
+| Tool | Version | Reason |
+|---|---|---|
+| Node.js | 22.x (min) | Latest LTS, required baseline for all backend deps |
+| Express.js | 5.x (min) | Modern middleware pipeline, async error handling |
+| TypeScript | 5.x (latest) | Shared types, fewer bugs |
+| MongoDB | latest | Flexible schema, good for LMS data |
+| Mongoose | latest | ODM, schema validation, middleware |
+| Redis | latest | Caching, session store, rate limiting |
+| BullMQ | latest | Job queues for video processing + email |
+| FFmpeg | system | HLS transcoding |
+| JWT | jsonwebtoken (latest) | Access token (short-lived) |
+| bcrypt | latest | Password hashing |
+| Zod | latest | Request body validation |
+| Multer | latest | Multipart parsing; temp disk staging before FFmpeg/R2 |
+| Nodemailer | latest | Transactional email (signup, enrollment, updates) |
+| Socket.IO | latest | WebSocket server for real-time in-app notifications |
+| Sharp | latest | Image thumbnail processing |
+| node-cron | latest | Scheduled cleanup jobs |
+| Helmet | latest | HTTP security headers |
+| cors | latest | CORS configuration |
+| express-rate-limit | latest | API rate limiting |
+| Morgan | latest | Request logging |
+| Winston | latest | Structured logging |
+
+### 2.3 Infrastructure / Cloud
+| Service | Use | Cost Tier |
+|---|---|---|
+| Cloudflare R2 | Video + image storage | Free 10GB, then $0.015/GB |
+| Cloudflare CDN | Asset delivery, edge caching | Free plan sufficient |
+| Redis Cloud (free tier) | Caching + BullMQ | Free 30MB |
+| MongoDB Atlas | Database | Free M0 cluster |
+| Railway | Backend hosting | Hobby tier (~$5/mo) or usage-based |
+| Vercel | Frontend hosting | Free tier |
+| Razorpay | Payments (test mode) | Free test mode |
+
+**Estimated Monthly Cost: ₹0–₹700/month** (using free tiers + Railway Hobby)
+
+---
+
+## 3. PROJECT ARCHITECTURE
+
+### 3.1 High-Level Architecture
+```
+┌─────────────────────────────────────────────────────┐
+│                  CLIENT (Browser)                    │
+│  React + Vite + TypeScript + TanStack Query          │
+│  Zustand (auth/theme/player) + React Router          │
+└────────────────────┬────────────────────────────────┘
+                     │ HTTPS (REST API)
+                     ▼
+┌─────────────────────────────────────────────────────┐
+│              API SERVER (Express.js)                 │
+│  TypeScript · Helmet · CORS · Rate Limiter           │
+│  JWT Auth Middleware · Role Guard Middleware          │
+│  Zod Validation · Winston Logger · Socket.IO          │
+│  Nodemailer (async via BullMQ)                        │
+│                                                      │
+│  Routes → Controllers → Services → Repositories     │
+└──────┬──────────────────┬──────────────────┬────────┘
+       │                  │                  │
+       ▼                  ▼                  ▼
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│  MongoDB     │  │    Redis     │  │   BullMQ     │
+│  (Atlas)     │  │  (Cache +    │  │  (Job Queue) │
+│              │  │   Sessions)  │  │              │
+└──────────────┘  └──────────────┘  └──────┬───────┘
+                                           │
+                                           ▼
+                                   ┌──────────────┐
+                                   │   Workers    │
+                                   │ (FFmpeg HLS  │
+                                   │  Transcode)  │
+                                   └──────┬───────┘
+                                          │
+                                          ▼
+                                   ┌──────────────┐
+                                   │ Cloudflare   │
+                                   │     R2       │
+                                   │ (HLS + imgs) │
+                                   └──────────────┘
+```
+
+### 3.2 Request Lifecycle (Happy Path)
+```
+Browser → Vercel (CDN) → React App
+  → API Call → Railway → Express
+    → Redis Cache Check
+      → HIT: Return cached response (< 5ms)
+      → MISS: MongoDB Query → Cache Set → Return response
+
+WebSocket (parallel):
+  Client ↔ Railway (Socket.IO) ↔ Redis adapter (optional, for scale)
+    → Real-time notifications (announcements, enrollments, updates)
+```
+
+### 3.3 Video Upload Lifecycle
+```
+Admin uploads video → Multer stores temp file on disk (/tmp on Railway)
+  → BullMQ job created (video:transcode)
+  → Admin gets job ID for polling
+  → Worker picks up job
+    → FFmpeg transcodes to 360p / 720p / 1080p
+    → Generates HLS .m3u8 playlists + .ts segments
+    → Uploads all files to Cloudflare R2
+    → Cleans up temp files
+    → Updates lesson record in MongoDB
+    → Job marked complete
+  → Frontend polls job status → Shows "Processing Complete"
+```
+
+### 3.3.1 Why Multer + Local Temp Storage (Not Direct-to-Cloud Upload)?
+```
+Q: Why not upload directly to R2 from the browser or API?
+
+A: We use a deliberate two-stage pipeline — temp disk → FFmpeg → R2:
+
+1. FFmpeg requires a local file path
+   - HLS transcoding runs via FFmpeg child process
+   - FFmpeg cannot transcode a streaming multipart upload in-flight reliably
+   - Worker needs a stable on-disk file for the full transcode duration
+
+2. Async job processing needs durability during the request lifecycle
+   - HTTP upload finishes in seconds; transcoding takes minutes
+   - Multer writes to /tmp (or os.tmpdir()) so the BullMQ worker can pick up
+     the file after the HTTP response returns
+   - Job data stores tempFilePath; worker deletes it after R2 upload
+
+3. How this works on Railway (deployed)
+   - Railway containers have ephemeral filesystem — /tmp is writable per instance
+   - Same container (or worker process) that received the upload processes the job
+   - Temp files are deleted immediately after successful R2 upload (node-cron safety net)
+   - No persistent disk required for prototype scale (4–5 courses, ~50 videos)
+
+4. Direct-to-R2 (presigned URL) is valid at scale but adds complexity
+   - Browser uploads raw MP4 to R2 → separate worker downloads from R2 → transcodes → re-uploads HLS
+   - Extra egress cost + longer pipeline for a hackathon prototype
+   - Multer + temp is simpler, explainable, and works on Railway out of the box
+
+5. Images (thumbnails, avatars) follow the same pattern
+   - Multer → Sharp resize → upload to R2 → delete temp
+   - Small files; entire flow completes in one request for images
+```
+
+### 3.4 Monorepo Structure
+```
+veolms/
+├── apps/
+│   ├── client/          # React frontend (Vite)
+│   └── server/          # Express backend
+├── packages/
+│   └── shared/          # Shared TypeScript types + Zod schemas
+├── docker-compose.yml   # Local dev (Redis + MongoDB)
+├── .env.example
+└── turbo.json           # Turborepo (optional, for monorepo builds)
+```
+
+---
+
+## 4. FOLDER STRUCTURE
+
+### 4.1 Frontend (`apps/client/src/`)
+```
+src/
+├── assets/                    # Static images, fonts
+├── components/
+│   ├── ui/                    # Shadcn-based base components (Button, Card, Input...)
+│   ├── layout/
+│   │   ├── Navbar.tsx
+│   │   ├── Footer.tsx
+│   │   ├── Sidebar.tsx
+│   │   └── PageWrapper.tsx
+│   ├── course/
+│   │   ├── CourseCard.tsx
+│   │   ├── CourseGrid.tsx
+│   │   ├── CourseBanner.tsx
+│   │   └── LessonList.tsx
+│   ├── player/
+│   │   ├── VideoPlayer.tsx    # Main player wrapper
+│   │   ├── PlayerControls.tsx
+│   │   └── QualitySelector.tsx
+│   ├── admin/
+│   │   ├── CourseForm.tsx
+│   │   ├── LessonForm.tsx
+│   │   ├── StudentTable.tsx
+│   │   └── EnrollmentTable.tsx
+│   └── shared/
+│       ├── ThemeSwitcher.tsx
+│       ├── SearchBar.tsx
+│       ├── NotificationBell.tsx   # WebSocket-driven in-app notifications
+│       ├── LoadingSpinner.tsx
+│       ├── ErrorBoundary.tsx
+│       └── ProtectedRoute.tsx
+├── hooks/
+│   ├── useAuth.ts
+│   ├── useTheme.ts
+│   ├── useVideoProgress.ts
+│   ├── useDebounce.ts
+│   ├── useLocalStorage.ts
+│   └── useNotifications.ts        # Socket.IO client + notification state
+├── lib/
+│   ├── api.ts                 # Axios instance + interceptors
+│   ├── socket.ts              # Socket.IO client singleton
+│   ├── encryption.ts          # AES-GCM client-side encrypt/decrypt
+│   ├── queryClient.ts         # TanStack Query config
+│   └── utils.ts               # cn(), formatDuration(), etc.
+├── pages/
+│   ├── public/
+│   │   ├── HomePage.tsx
+│   │   ├── CoursePage.tsx
+│   │   ├── SearchPage.tsx
+│   │   └── NotFoundPage.tsx
+│   ├── auth/
+│   │   ├── LoginPage.tsx
+│   │   └── RegisterPage.tsx
+│   ├── student/
+│   │   ├── DashboardPage.tsx
+│   │   ├── MyCoursesPage.tsx
+│   │   ├── LearnPage.tsx      # Video player + lesson list
+│   │   └── ProfilePage.tsx
+│   └── admin/
+│       ├── AdminDashboardPage.tsx
+│       ├── ManageCoursesPage.tsx
+│       ├── CourseEditorPage.tsx
+│       ├── ManageStudentsPage.tsx
+│       └── EnrollmentsPage.tsx
+├── store/
+│   ├── authStore.ts           # Zustand: user, token, role
+│   ├── themeStore.ts          # Zustand: theme, colorScheme
+│   ├── playerStore.ts         # Zustand: currentLesson, isPlaying, quality
+│   └── notificationStore.ts   # Zustand: unread count, notification list
+├── services/
+│   ├── auth.service.ts
+│   ├── course.service.ts
+│   ├── enrollment.service.ts
+│   ├── notification.service.ts
+│   ├── payment.service.ts
+│   ├── video.service.ts
+│   └── admin.service.ts
+├── types/
+│   └── index.ts               # Re-exports from packages/shared
+├── styles/
+│   ├── globals.css            # Tailwind base + CSS variables for themes
+│   └── themes.css             # All 7 theme variable sets
+├── router/
+│   └── index.tsx              # All routes, protected route wrappers
+└── main.tsx
+```
+
+### 4.2 Backend (`apps/server/src/`)
+```
+src/
+├── config/
+│   ├── db.ts                  # MongoDB connection
+│   ├── redis.ts               # Redis connection
+│   ├── r2.ts                  # Cloudflare R2 S3-compatible client
+│   ├── bullmq.ts              # Queue + Worker setup
+│   ├── mailer.ts              # Nodemailer transporter config
+│   ├── socket.ts              # Socket.IO server setup
+│   └── env.ts                 # Zod-validated env vars
+├── middleware/
+│   ├── auth.middleware.ts     # JWT verify
+│   ├── role.middleware.ts     # requireRole('admin')
+│   ├── validate.middleware.ts # Zod request validation
+│   ├── rateLimiter.ts         # express-rate-limit configs
+│   ├── errorHandler.ts        # Global error handler
+│   └── requestLogger.ts       # Morgan + Winston
+├── modules/
+│   ├── auth/
+│   │   ├── auth.router.ts
+│   │   ├── auth.controller.ts
+│   │   ├── auth.service.ts
+│   │   └── auth.schema.ts     # Zod schemas
+│   ├── user/
+│   │   ├── user.router.ts
+│   │   ├── user.controller.ts
+│   │   ├── user.service.ts
+│   │   └── user.model.ts
+│   ├── course/
+│   │   ├── course.router.ts
+│   │   ├── course.controller.ts
+│   │   ├── course.service.ts
+│   │   ├── course.model.ts
+│   │   └── course.schema.ts
+│   ├── lesson/
+│   │   ├── lesson.router.ts
+│   │   ├── lesson.controller.ts
+│   │   ├── lesson.service.ts
+│   │   └── lesson.model.ts
+│   ├── enrollment/
+│   │   ├── enrollment.router.ts
+│   │   ├── enrollment.controller.ts
+│   │   ├── enrollment.service.ts
+│   │   └── enrollment.model.ts
+│   ├── payment/
+│   │   ├── payment.router.ts
+│   │   ├── payment.controller.ts
+│   │   ├── payment.service.ts
+│   │   └── payment.model.ts
+│   ├── progress/
+│   │   ├── progress.router.ts
+│   │   ├── progress.controller.ts
+│   │   ├── progress.service.ts
+│   │   └── progress.model.ts
+│   ├── video/
+│   │   ├── video.router.ts
+│   │   ├── video.controller.ts
+│   │   ├── video.service.ts
+│   │   └── workers/
+│   │       └── transcode.worker.ts
+│   ├── admin/
+│   │   ├── admin.router.ts
+│   │   ├── admin.controller.ts
+│   │   └── admin.service.ts   # Export/Import logic
+│   ├── notification/
+│   │   ├── notification.router.ts
+│   │   ├── notification.controller.ts
+│   │   ├── notification.service.ts
+│   │   └── notification.model.ts
+│   └── email/
+│       ├── email.service.ts       # Nodemailer send helpers
+│       ├── email.templates.ts     # HTML templates per event type
+│       └── workers/
+│           └── email.worker.ts    # BullMQ email:send worker
+├── utils/
+│   ├── asyncHandler.ts        # Express async error wrapper
+│   ├── apiResponse.ts         # Consistent response format
+│   ├── apiError.ts            # Custom error class
+│   ├── encryption.ts          # AES-GCM server-side utils
+│   ├── generateToken.ts       # JWT generation
+│   ├── signedUrl.ts           # R2 signed URL generator
+│   └── logger.ts              # Winston logger instance
+├── jobs/
+│   └── transcodeJob.ts        # BullMQ job definition
+├── types/
+│   └── index.ts               # Shared types
+└── app.ts                     # Express app setup
+└── server.ts                  # HTTP server + graceful shutdown
+```
+
+### 4.3 Shared Package (`packages/shared/src/`)
+```
+src/
+├── types/
+│   ├── user.types.ts
+│   ├── course.types.ts
+│   ├── lesson.types.ts
+│   ├── enrollment.types.ts
+│   └── api.types.ts
+└── schemas/
+    ├── auth.schemas.ts
+    ├── course.schemas.ts
+    └── lesson.schemas.ts
+```
+
+---
+
+## 5. DATABASE DESIGN (MongoDB Schemas)
+
+### 5.1 Users Collection
+```typescript
+// models/user.model.ts
+{
+  _id: ObjectId,
+  name: string,                          // Plaintext
+  email: string,                         // AES-GCM encrypted (index on hash)
+  emailHash: string,                     // SHA-256 hash of lowercased email (for lookup)
+  password: string,                      // bcrypt hash
+  role: 'student' | 'admin',
+  avatar: string | null,                 // R2 URL
+  isActive: boolean,
+  lastLogin: Date,
+  createdAt: Date,
+  updatedAt: Date
+}
+
+// Indexes:
+// { emailHash: 1 } — unique
+// { role: 1 }
+```
+
+> **Why emailHash?** Email is AES-GCM encrypted at rest. We can't query encrypted text. So we store a deterministic SHA-256 hash of the normalized email to enable login lookups without ever storing plaintext email in DB.
+
+### 5.2 Courses Collection
+```typescript
+{
+  _id: ObjectId,
+  title: string,
+  slug: string,                          // URL-friendly, unique
+  description: string,
+  shortDescription: string,
+  thumbnail: string,                     // R2 URL
+  trailerUrl: string,                    // YouTube embed or R2 HLS URL
+  instructor: {
+    name: string,
+    bio: string,
+    avatar: string
+  },
+  price: number,                         // In INR (paise or rupees — be consistent)
+  originalPrice: number,
+  category: string,
+  tags: string[],
+  level: 'beginner' | 'intermediate' | 'advanced',
+  language: string,
+  totalLessons: number,                  // Denormalized count
+  totalDuration: number,                 // Seconds, denormalized
+  isPublished: boolean,
+  isFeatured: boolean,
+  enrollmentCount: number,               // Denormalized
+  rating: {
+    average: number,
+    count: number
+  },
+  sections: [{
+    _id: ObjectId,
+    title: string,
+    order: number,
+    lessons: ObjectId[]                  // Lesson refs
+  }],
+  createdAt: Date,
+  updatedAt: Date
+}
+
+// Indexes:
+// { slug: 1 } — unique
+// { isPublished: 1, isFeatured: 1 }
+// { category: 1, isPublished: 1 }
+// { title: 'text', description: 'text', tags: 'text' } — full-text search
+```
+
+### 5.3 Lessons Collection
+```typescript
+{
+  _id: ObjectId,
+  courseId: ObjectId,
+  sectionId: ObjectId,
+  title: string,
+  description: string,
+  order: number,
+  duration: number,                      // Seconds
+  isPreview: boolean,                    // Free preview without enrollment
+  video: {
+    status: 'pending' | 'processing' | 'ready' | 'failed',
+    jobId: string | null,                // BullMQ job ID
+    sources: [{
+      quality: '360p' | '720p' | '1080p',
+      url: string,                       // Signed R2 URL (refreshed on demand)
+      hlsUrl: string                     // .m3u8 playlist URL
+    }],
+    masterPlaylist: string,              // Master HLS playlist with all qualities
+    thumbnailUrl: string                 // Video thumbnail (auto-generated)
+  },
+  resources: [{
+    title: string,
+    url: string
+  }],
+  createdAt: Date,
+  updatedAt: Date
+}
+
+// Indexes:
+// { courseId: 1, order: 1 }
+// { courseId: 1, isPreview: 1 }
+```
+
+### 5.4 Enrollments Collection
+```typescript
+{
+  _id: ObjectId,
+  userId: ObjectId,
+  courseId: ObjectId,
+  paymentId: ObjectId,
+  enrolledAt: Date,
+  completedAt: Date | null,
+  isActive: boolean,
+  progress: number                       // 0–100 percentage (denormalized)
+}
+
+// Indexes:
+// { userId: 1, courseId: 1 } — unique
+// { courseId: 1 }
+// { userId: 1, enrolledAt: -1 }
+```
+
+### 5.5 Progress Collection
+```typescript
+{
+  _id: ObjectId,
+  userId: ObjectId,
+  courseId: ObjectId,
+  lessonId: ObjectId,
+  watchedSeconds: number,
+  totalSeconds: number,
+  isCompleted: boolean,
+  completedAt: Date | null,
+  lastWatchedAt: Date,
+  updatedAt: Date
+}
+
+// Indexes:
+// { userId: 1, courseId: 1, lessonId: 1 } — unique
+// { userId: 1, lastWatchedAt: -1 }
+```
+
+### 5.6 Payments Collection
+```typescript
+{
+  _id: ObjectId,
+  userId: ObjectId,
+  courseId: ObjectId,
+  razorpayOrderId: string,
+  razorpayPaymentId: string | null,
+  razorpaySignature: string | null,
+  amount: number,                        // In paise
+  currency: 'INR',
+  status: 'created' | 'paid' | 'failed' | 'refunded',
+  metadata: {
+    courseName: string,                  // Snapshot at time of purchase
+    coursePrice: number
+  },
+  createdAt: Date,
+  updatedAt: Date
+}
+
+// Indexes:
+// { razorpayOrderId: 1 } — unique
+// { userId: 1, createdAt: -1 }
+// { status: 1 }
+```
+
+### 5.7 Notifications Collection
+```typescript
+{
+  _id: ObjectId,
+  userId: ObjectId,                      // Recipient (null = broadcast to role)
+  targetRole: 'student' | 'admin' | null, // For admin announcements to all students
+  type: 'announcement' | 'enrollment' | 'course_update' | 'payment' | 'system',
+  title: string,
+  message: string,
+  link: string | null,                   // Deep link (e.g. /learn/react-basics/lesson-1)
+  metadata: Record<string, unknown>,     // courseId, lessonId, etc.
+  isRead: boolean,
+  createdAt: Date
+}
+
+// Indexes:
+// { userId: 1, isRead: 1, createdAt: -1 }
+// { targetRole: 1, createdAt: -1 }
+```
+
+---
+
+## 6. AUTHENTICATION & AUTHORIZATION
+
+### 6.1 Auth Flow
+```
+REGISTER:
+  POST /api/auth/register
+    → Validate body (Zod)
+    → Check emailHash uniqueness
+    → Hash password (bcrypt, 12 rounds)
+    → Encrypt email with AES-GCM
+    → Save user
+    → Queue welcome email (BullMQ email:send)
+    → Generate accessToken (JWT, 15min) + refreshToken (JWT, 7d)
+    → Store refreshToken hash in Redis (key: refresh:{userId})
+    → Return tokens + user profile
+
+LOGIN:
+  POST /api/auth/login
+    → Validate body
+    → Compute emailHash, find user
+    → Compare bcrypt password
+    → Generate new token pair
+    → Return tokens
+
+REFRESH:
+  POST /api/auth/refresh
+    → Validate refreshToken (JWT signature + Redis presence)
+    → Issue new accessToken
+    → Rotate refreshToken (old invalidated in Redis)
+
+LOGOUT:
+  POST /api/auth/logout
+    → Delete refreshToken from Redis
+    → Client clears tokens
+
+PROTECTED ROUTES:
+  Every protected API → auth.middleware.ts
+    → Extract Bearer token from Authorization header
+    → Verify JWT signature + expiry
+    → Attach req.user = { id, role }
+```
+
+### 6.2 Role System
+```typescript
+// role.middleware.ts
+export const requireRole = (...roles: Role[]) =>
+  (req: Request, res: Response, next: NextFunction) => {
+    if (!roles.includes(req.user.role)) {
+      throw new ApiError(403, 'Forbidden: Insufficient permissions')
+    }
+    next()
+  }
+
+// Usage:
+router.post('/courses', authenticate, requireRole('admin'), createCourse)
+router.get('/my-courses', authenticate, requireRole('student', 'admin'), getMyCourses)
+```
+
+### 6.3 Token Storage (Frontend)
+```
+Access Token  → Memory only (Zustand store, NOT localStorage)
+Refresh Token → httpOnly cookie (secure, sameSite: strict)
+```
+> **Why?** XSS cannot steal httpOnly cookies. Memory-stored access tokens die on tab close — that's acceptable. This is a well-known secure pattern.
+
+### 6.4 Frontend Protected Routes
+```typescript
+// ProtectedRoute.tsx
+const ProtectedRoute = ({ allowedRoles }: { allowedRoles: Role[] }) => {
+  const { user } = useAuthStore()
+  if (!user) return <Navigate to="/login" replace />
+  if (!allowedRoles.includes(user.role)) return <Navigate to="/unauthorized" replace />
+  return <Outlet />
+}
+
+// Router:
+<Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+  <Route path="/admin/*" element={<AdminLayout />} />
+</Route>
+```
+
+---
+
+## 7. AES-GCM ENCRYPTION STRATEGY
+
+### 7.1 What We Encrypt & Why
+| Field | Location | Reason |
+|---|---|---|
+| `email` (User) | MongoDB | PII protection — if DB is breached, emails aren't exposed |
+| `name` (User) | MongoDB | Optional — include for completeness |
+| `razorpaySignature` (Payment) | MongoDB | Sensitive payment verification data |
+
+### 7.2 Server-Side Implementation
+```typescript
+// utils/encryption.ts (server)
+import crypto from 'crypto'
+
+const ALGORITHM = 'aes-256-gcm'
+const KEY = Buffer.from(process.env.ENCRYPTION_KEY!, 'hex') // 32 bytes = 64 hex chars
+const IV_LENGTH = 12 // 96 bits — recommended for GCM
+
+export function encrypt(text: string): string {
+  const iv = crypto.randomBytes(IV_LENGTH)
+  const cipher = crypto.createCipheriv(ALGORITHM, KEY, iv)
+
+  const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()])
+  const authTag = cipher.getAuthTag() // 16 bytes GCM auth tag
+
+  // Format: iv(12) + authTag(16) + ciphertext — all base64 encoded together
+  const combined = Buffer.concat([iv, authTag, encrypted])
+  return combined.toString('base64')
+}
+
+export function decrypt(encryptedData: string): string {
+  const combined = Buffer.from(encryptedData, 'base64')
+
+  const iv = combined.slice(0, IV_LENGTH)
+  const authTag = combined.slice(IV_LENGTH, IV_LENGTH + 16)
+  const ciphertext = combined.slice(IV_LENGTH + 16)
+
+  const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv)
+  decipher.setAuthTag(authTag)
+
+  const decrypted = Buffer.concat([decipher.update(ciphertext), decipher.final()])
+  return decrypted.toString('utf8')
+}
+
+export function hashEmail(email: string): string {
+  return crypto
+    .createHash('sha256')
+    .update(email.toLowerCase().trim())
+    .digest('hex')
+}
+```
+
+### 7.3 Mongoose Middleware Integration
+```typescript
+// user.model.ts
+userSchema.pre('save', function (next) {
+  if (this.isModified('email')) {
+    this.emailHash = hashEmail(this.email)   // store hash for lookup
+    this.email = encrypt(this.email)         // encrypt actual email
+  }
+  next()
+})
+
+// After fetching, decrypt for use:
+userSchema.methods.getDecryptedEmail = function () {
+  return decrypt(this.email)
+}
+```
+
+### 7.4 Key Management
+```
+ENCRYPTION_KEY = 64-character hex string (32 bytes)
+Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+Store ONLY in environment variables — never in code or git
+```
+
+### 7.5 Client-Side AES-GCM (Optional but Included)
+```typescript
+// lib/encryption.ts (frontend) — for encrypting sensitive form data before transit
+// Note: HTTPS already encrypts in transit. This is defense-in-depth for payment forms.
+
+const importKey = async (rawKey: string) => {
+  const keyBuffer = hexToBuffer(rawKey)
+  return crypto.subtle.importKey('raw', keyBuffer, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt'])
+}
+
+export const encryptPayload = async (data: object, keyHex: string): Promise<string> => {
+  const key = await importKey(keyHex)
+  const iv = crypto.getRandomValues(new Uint8Array(12))
+  const encoded = new TextEncoder().encode(JSON.stringify(data))
+  const encrypted = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded)
+  // Combine iv + encrypted
+  const combined = new Uint8Array(iv.length + encrypted.byteLength)
+  combined.set(iv)
+  combined.set(new Uint8Array(encrypted), iv.length)
+  return bufferToBase64(combined)
+}
+```
+
+> **When to use client-side encryption:** Only for the payment initiation payload (card details never touch our server anyway — Razorpay handles that). This is more for demonstrating the concept.
+
+---
+
+## 8. THEME SYSTEM (Light, Dark + 5 Color Themes)
+
+### 8.1 Theme Architecture
+The theme system uses **CSS Custom Properties (Variables)** + **Tailwind CSS** + **Zustand store**. Theme preferences persist to `localStorage`.
+
+### 8.2 Two Design Variants
+The challenge mentions "some have solid radius, some have proper radius." We implement this as a **border-radius variant** within the theme:
+
+```
+Variant A: "Sharp" — border-radius: 4px (cards, buttons, inputs)
+Variant B: "Rounded" — border-radius: 12px (cards), 8px (buttons), 6px (inputs)
+```
+
+This is toggled independently of color theme.
+
+### 8.3 CSS Variables Structure
+```css
+/* styles/themes.css */
+
+/* ─── BASE TOKENS (shared across all themes) ─── */
+:root {
+  /* Spacing, Typography, Shadows — theme-independent */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.10);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.14);
+
+  /* Radius variants */
+  --radius-sharp: 4px;
+  --radius-rounded: 12px;
+  --radius: var(--radius-rounded); /* default */
+
+  --radius-btn-sharp: 4px;
+  --radius-btn-rounded: 8px;
+  --radius-btn: var(--radius-btn-rounded);
+
+  --radius-input-sharp: 4px;
+  --radius-input-rounded: 6px;
+  --radius-input: var(--radius-input-rounded);
+}
+
+/* ─── LIGHT THEME ─── */
+[data-theme="light"] {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-overlay: rgba(0,0,0,0.5);
+
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --text-inverse: #ffffff;
+
+  --border-default: #e2e8f0;
+  --border-focus: var(--accent-primary);
+
+  --accent-primary: #6366f1;        /* Indigo — brand color */
+  --accent-secondary: #818cf8;
+  --accent-hover: #4f46e5;
+  --accent-subtle: #eef2ff;
+
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+
+  --sidebar-bg: #ffffff;
+  --navbar-bg: rgba(255,255,255,0.85);
+  --navbar-blur: blur(12px);
+}
+
+/* ─── DARK THEME ─── */
+[data-theme="dark"] {
+  --bg-primary: #0b0f1a;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1e2535;
+  --bg-card: #161d2e;
+  --bg-overlay: rgba(0,0,0,0.7);
+
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  --text-inverse: #0f172a;
+
+  --border-default: #1e2535;
+  --border-focus: var(--accent-primary);
+
+  --accent-primary: #818cf8;
+  --accent-secondary: #6366f1;
+  --accent-hover: #a5b4fc;
+  --accent-subtle: #1e1b4b;
+
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --error: #f87171;
+  --info: #60a5fa;
+
+  --sidebar-bg: #111827;
+  --navbar-bg: rgba(11,15,26,0.85);
+  --navbar-blur: blur(12px);
+}
+
+/* ─── GREEN THEME ─── */
+[data-theme="green"] {
+  --bg-primary: #f0fdf4;
+  --bg-secondary: #dcfce7;
+  --bg-tertiary: #bbf7d0;
+  --bg-card: #ffffff;
+  --accent-primary: #16a34a;
+  --accent-secondary: #22c55e;
+  --accent-hover: #15803d;
+  --accent-subtle: #f0fdf4;
+  --text-primary: #14532d;
+  --text-secondary: #166534;
+  --text-muted: #4ade80;
+  --border-default: #bbf7d0;
+  --sidebar-bg: #f0fdf4;
+  --navbar-bg: rgba(240,253,244,0.9);
+}
+
+/* ─── PINK THEME ─── */
+[data-theme="pink"] {
+  --bg-primary: #fdf2f8;
+  --bg-secondary: #fce7f3;
+  --bg-tertiary: #fbcfe8;
+  --bg-card: #ffffff;
+  --accent-primary: #db2777;
+  --accent-secondary: #ec4899;
+  --accent-hover: #be185d;
+  --accent-subtle: #fdf2f8;
+  --text-primary: #500724;
+  --text-secondary: #831843;
+  --text-muted: #f9a8d4;
+  --border-default: #fbcfe8;
+  --sidebar-bg: #fdf2f8;
+  --navbar-bg: rgba(253,242,248,0.9);
+}
+
+/* ─── BLUE THEME ─── */
+[data-theme="blue"] {
+  --bg-primary: #eff6ff;
+  --bg-secondary: #dbeafe;
+  --bg-tertiary: #bfdbfe;
+  --bg-card: #ffffff;
+  --accent-primary: #2563eb;
+  --accent-secondary: #3b82f6;
+  --accent-hover: #1d4ed8;
+  --accent-subtle: #eff6ff;
+  --text-primary: #1e3a5f;
+  --text-secondary: #1e40af;
+  --text-muted: #93c5fd;
+  --border-default: #bfdbfe;
+  --sidebar-bg: #eff6ff;
+  --navbar-bg: rgba(239,246,255,0.9);
+}
+
+/* ─── YELLOW / AMBER THEME ─── */
+[data-theme="yellow"] {
+  --bg-primary: #fffbeb;
+  --bg-secondary: #fef3c7;
+  --bg-tertiary: #fde68a;
+  --bg-card: #ffffff;
+  --accent-primary: #d97706;
+  --accent-secondary: #f59e0b;
+  --accent-hover: #b45309;
+  --accent-subtle: #fffbeb;
+  --text-primary: #451a03;
+  --text-secondary: #78350f;
+  --text-muted: #fcd34d;
+  --border-default: #fde68a;
+  --sidebar-bg: #fffbeb;
+  --navbar-bg: rgba(255,251,235,0.9);
+}
+
+/* ─── ROSE / RED THEME ─── */
+[data-theme="rose"] {
+  --bg-primary: #fff1f2;
+  --bg-secondary: #ffe4e6;
+  --bg-tertiary: #fecdd3;
+  --bg-card: #ffffff;
+  --accent-primary: #e11d48;
+  --accent-secondary: #f43f5e;
+  --accent-hover: #be123c;
+  --accent-subtle: #fff1f2;
+  --text-primary: #4c0519;
+  --text-secondary: #881337;
+  --text-muted: #fda4af;
+  --border-default: #fecdd3;
+  --sidebar-bg: #fff1f2;
+  --navbar-bg: rgba(255,241,242,0.9);
+}
+
+/* ─── SHARP RADIUS OVERRIDE ─── */
+[data-radius="sharp"] {
+  --radius: var(--radius-sharp);
+  --radius-btn: var(--radius-btn-sharp);
+  --radius-input: var(--radius-input-sharp);
+}
+```
+
+### 8.4 Zustand Theme Store
+```typescript
+// store/themeStore.ts
+type ColorTheme = 'light' | 'dark' | 'green' | 'pink' | 'blue' | 'yellow' | 'rose'
+type RadiusVariant = 'rounded' | 'sharp'
+
+interface ThemeStore {
+  colorTheme: ColorTheme
+  radiusVariant: RadiusVariant
+  setColorTheme: (theme: ColorTheme) => void
+  setRadiusVariant: (variant: RadiusVariant) => void
+}
+
+export const useThemeStore = create<ThemeStore>()(
+  persist(
+    (set) => ({
+      colorTheme: 'dark',
+      radiusVariant: 'rounded',
+      setColorTheme: (colorTheme) => {
+        document.documentElement.setAttribute('data-theme', colorTheme)
+        set({ colorTheme })
+      },
+      setRadiusVariant: (radiusVariant) => {
+        document.documentElement.setAttribute('data-radius', radiusVariant)
+        set({ radiusVariant })
+      }
+    }),
+    { name: 'veolms-theme' }
+  )
+)
+```
+
+### 8.5 ThemeSwitcher Component (UI)
+```
+ThemeSwitcher panel:
+  - Color swatches (7 circles): Light | Dark | Green | Pink | Blue | Yellow | Rose
+  - Radius toggle: [Rounded ●] [Sharp ■]
+  - Accessible: keyboard navigable, ARIA labels
+  - Positioned: top-right in Navbar (dropdown or side panel)
+```
+
+---
+
+## 9. UI/UX DESIGN SYSTEM
+
+### 9.1 Typography Scale
+```
+Heading 1: 48px / 600 weight / -0.02em tracking
+Heading 2: 36px / 600 weight / -0.01em tracking
+Heading 3: 28px / 600 weight
+Heading 4: 22px / 600 weight
+Body Large: 18px / 400 weight / 1.7 line-height
+Body:       16px / 400 weight / 1.6 line-height
+Body Small: 14px / 400 weight
+Caption:    12px / 500 weight / uppercase tracking
+```
+
+### 9.2 Component Design Rules
+```
+Cards:
+  - Border: 1px solid var(--border-default)
+  - Background: var(--bg-card)
+  - Border-radius: var(--radius)
+  - Box-shadow: var(--shadow-sm)
+  - Hover: var(--shadow-md) + slight translateY(-2px)
+  - Transition: all 200ms ease
+
+Buttons:
+  - Primary: bg=accent-primary, text=white, hover=accent-hover
+  - Secondary: bg=transparent, border=accent-primary, text=accent-primary
+  - Ghost: bg=transparent, hover=bg-tertiary
+  - Destructive: bg=error, text=white
+  - Border-radius: var(--radius-btn)
+  - Focus ring: 2px solid var(--accent-primary), 2px offset
+
+Inputs:
+  - Border: 1px solid var(--border-default)
+  - Focus: border-color=accent-primary + shadow-sm
+  - Border-radius: var(--radius-input)
+  - Transition: border-color 150ms
+
+Navbar:
+  - Height: 64px
+  - Background: var(--navbar-bg) with var(--navbar-blur)
+  - Sticky top-0, z-index: 50
+  - Logo + Nav links + Search + NotificationBell + Auth buttons + ThemeSwitcher
+
+Sidebar (Admin / Learn page):
+  - Width: 280px (desktop), collapsible on mobile
+  - Background: var(--sidebar-bg)
+  - Border-right: 1px solid var(--border-default)
+```
+
+### 9.3 Page Designs
+
+#### Public Homepage
+```
+Hero Section:
+  - Full-width, min-height: 600px
+  - Gradient background (uses --accent-primary)
+  - Headline: "Learn Without Limits"
+  - Subheadline: short description
+  - CTA Buttons: "Explore Courses" (primary) + "How It Works" (secondary)
+  - Animated floating course cards (subtle Framer Motion)
+
+Featured Courses:
+  - "Featured Courses" section header
+  - Grid: 4 columns desktop, 2 tablet, 1 mobile
+  - CourseCard: thumbnail, title, instructor, rating, price, lesson count
+
+Course Categories (horizontal scroll):
+  - Category chips: HTML, CSS, JavaScript, React, Node.js, Redux
+  - Clicking filters course grid
+
+Stats Bar:
+  - X+ Students, Y+ Courses, Z+ Hours of Content
+  - Counter animation on scroll
+
+Footer:
+  - Logo, nav links, social links, copyright
+```
+
+#### Course Detail Page
+```
+Left (60%):
+  - Breadcrumb
+  - Course title (H1)
+  - Short description
+  - Rating stars + enrollment count
+  - Instructor name + avatar
+  - Tags + Category
+  - Full description (expandable)
+  - Curriculum accordion (sections + lessons with duration + preview badge)
+  - "What You'll Learn" bullets
+
+Right (40%, sticky):
+  - Course thumbnail / trailer video
+  - Price (original strikethrough + current)
+  - "Enroll Now" / "Continue Learning" CTA
+  - Includes list: X lessons, Y hours, lifetime access
+  - Preview lessons (clickable)
+```
+
+#### Learn Page (Video Player)
+```
+Layout:
+  Top bar: Course title + breadcrumb
+  Main area: Video player (70%) + Lesson sidebar (30%)
+
+  Lesson Sidebar:
+    - Section-based accordion
+    - Each lesson: checkbox (completed), title, duration
+    - Current lesson highlighted
+    - Search within lessons
+
+  Below video:
+    - Lesson title + description
+    - Tab: Resources | Notes (optional)
+    - Next / Prev lesson buttons
+```
+
+### 9.4 Animation Guidelines
+```
+Page transitions: Framer Motion fade + slight slide (200ms)
+Card hover: translateY(-2px) + shadow (200ms ease)
+Sidebar slide: 250ms ease-in-out
+Modal: scale(0.95) → scale(1) + fade (150ms)
+Loading skeleton: shimmer animation
+Progress bar: smooth width transition
+Video progress: smooth (via requestAnimationFrame)
+```
+
+---
+
+## 10. API DESIGN (REST Endpoints)
+
+### 10.1 API Response Format
+```typescript
+// All responses follow this structure:
+{
+  success: boolean,
+  message: string,
+  data: T | null,
+  meta?: {              // Pagination
+    page: number,
+    limit: number,
+    total: number,
+    totalPages: number
+  },
+  error?: string        // Only on error responses
+}
+```
+
+### 10.2 Auth Routes
+```
+POST   /api/auth/register          Public
+POST   /api/auth/login             Public
+POST   /api/auth/logout            Authenticated
+POST   /api/auth/refresh           Public (cookie-based)
+GET    /api/auth/me                Authenticated
+```
+
+### 10.3 Course Routes
+```
+GET    /api/courses                     Public — list (cached 5 min)
+GET    /api/courses/featured            Public — (cached 10 min)
+GET    /api/courses/search?q=           Public — (cached 1 min per query)
+GET    /api/courses/:slug               Public — (cached 5 min)
+GET    /api/courses/:slug/curriculum    Public — (cached 5 min)
+POST   /api/courses                     Admin only
+PUT    /api/courses/:id                 Admin only
+DELETE /api/courses/:id                 Admin only
+PATCH  /api/courses/:id/publish         Admin only
+```
+
+### 10.4 Lesson Routes
+```
+GET    /api/lessons/:id                 Auth + Enrolled (or isPreview)
+POST   /api/lessons                     Admin only
+PUT    /api/lessons/:id                 Admin only
+DELETE /api/lessons/:id                 Admin only
+GET    /api/lessons/:id/video-url       Auth + Enrolled — signed URL
+```
+
+### 10.5 Enrollment Routes
+```
+GET    /api/enrollments/my                   Student — my enrollments
+GET    /api/enrollments/my/:courseId         Student — check enrollment
+POST   /api/enrollments                      Student — enroll after payment
+GET    /api/enrollments (admin)              Admin — all enrollments
+```
+
+### 10.6 Progress Routes
+```
+GET    /api/progress/:courseId               Student — full course progress
+POST   /api/progress/update                  Student — update watch position
+GET    /api/progress/recent                  Student — recently watched
+```
+
+### 10.7 Payment Routes
+```
+POST   /api/payments/create-order            Student — create Razorpay order
+POST   /api/payments/verify                  Student — verify payment signature
+GET    /api/payments/history                 Student — payment history
+```
+
+### 10.8 Video Routes
+```
+POST   /api/videos/upload                    Admin — upload video file
+GET    /api/videos/job/:jobId               Admin — poll transcoding job status
+GET    /api/videos/:lessonId/stream         Auth + Enrolled — get signed HLS URL
+```
+
+### 10.9 Admin Routes
+```
+GET    /api/admin/stats                      Admin — dashboard stats
+GET    /api/admin/students                   Admin — student list
+GET    /api/admin/enrollments                Admin — all enrollments
+POST   /api/admin/export/courses             Admin — export courses JSON/CSV
+POST   /api/admin/export/students            Admin — export students JSON/CSV
+POST   /api/admin/export/enrollments         Admin — export enrollments JSON/CSV
+POST   /api/admin/import/courses             Admin — import courses JSON/CSV
+POST   /api/admin/import/students            Admin — import students JSON/CSV
+POST   /api/admin/announcements              Admin — broadcast announcement (email + WebSocket)
+```
+
+### 10.10 Notification Routes
+```
+GET    /api/notifications                    Authenticated — list (paginated)
+GET    /api/notifications/unread-count       Authenticated — unread badge count
+PATCH  /api/notifications/:id/read           Authenticated — mark single as read
+PATCH  /api/notifications/read-all           Authenticated — mark all as read
+DELETE /api/notifications/:id                Authenticated — dismiss notification
+```
+
+### 10.11 WebSocket Events (Socket.IO)
+```
+Client → Server:
+  authenticate          { token } — join user-specific room after JWT verify
+  mark_read             { notificationId }
+
+Server → Client:
+  notification:new      { id, type, title, message, link, createdAt }
+  notification:count    { unread: number }
+  announcement:broadcast { title, message } — admin-wide announcements
+```
+
+---
+
+## 11. VIDEO PIPELINE & HLS STREAMING
+
+### 11.1 Why HLS?
+- Adaptive bitrate streaming (ABR) — player picks quality based on bandwidth
+- Works natively in modern browsers via hls.js
+- CDN-friendly (Cloudflare R2 + CDN serves .ts segments efficiently)
+- Resumable — segments are small (2–6 seconds each)
+
+### 11.2 FFmpeg Transcode Command
+```bash
+# Input: temp uploaded file
+# Output: HLS variants + master playlist
+
+ffmpeg -i input.mp4 \
+  # 360p
+  -vf scale=640:360 -c:v libx264 -crf 28 -preset fast \
+  -c:a aac -b:a 96k \
+  -hls_time 4 -hls_playlist_type vod \
+  -hls_segment_filename 'output/360p/segment%03d.ts' \
+  output/360p/index.m3u8 \
+
+  # 720p
+  -vf scale=1280:720 -c:v libx264 -crf 24 -preset fast \
+  -c:a aac -b:a 128k \
+  -hls_time 4 -hls_playlist_type vod \
+  -hls_segment_filename 'output/720p/segment%03d.ts' \
+  output/720p/index.m3u8 \
+
+  # 1080p
+  -vf scale=1920:1080 -c:v libx264 -crf 22 -preset fast \
+  -c:a aac -b:a 192k \
+  -hls_time 4 -hls_playlist_type vod \
+  -hls_segment_filename 'output/1080p/segment%03d.ts' \
+  output/1080p/index.m3u8
+```
+
+### 11.3 Master Playlist Generation
+```
+#EXTM3U
+
+#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=640x360
+360p/index.m3u8
+
+#EXT-X-STREAM-INF:BANDWIDTH=2800000,RESOLUTION=1280x720
+720p/index.m3u8
+
+#EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080
+1080p/index.m3u8
+```
+
+### 11.4 R2 Upload Structure
+```
+r2-bucket/
+└── videos/
+    └── {lessonId}/
+        ├── master.m3u8
+        ├── 360p/
+        │   ├── index.m3u8
+        │   ├── segment000.ts
+        │   └── segment001.ts
+        ├── 720p/
+        │   ├── index.m3u8
+        │   └── ...
+        └── 1080p/
+            ├── index.m3u8
+            └── ...
+```
+
+### 11.5 Signed URL Security
+```typescript
+// signedUrl.ts
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3'
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+
+export const generateSignedUrl = async (key: string, expiresIn = 3600): Promise<string> => {
+  const command = new GetObjectCommand({
+    Bucket: process.env.R2_BUCKET_NAME!,
+    Key: key
+  })
+  return getSignedUrl(r2Client, command, { expiresIn })
+}
+
+// In lesson controller:
+// 1. Verify user is enrolled
+// 2. Generate signed master.m3u8 URL (expires 2 hours)
+// 3. Return to client
+// Client uses this URL with hls.js — segments are served from R2 CDN
+```
+
+### 11.6 BullMQ Transcode Worker
+```typescript
+// workers/transcode.worker.ts
+const transcodeQueue = new Queue('video:transcode', { connection: redis })
+
+const transcodeWorker = new Worker('video:transcode', async (job) => {
+  const { lessonId, tempFilePath } = job.data
+
+  await job.updateProgress(5)
+
+  // 1. Run FFmpeg (spawn child process)
+  await runFFmpeg(tempFilePath, outputDir)
+  await job.updateProgress(70)
+
+  // 2. Upload all HLS files to R2
+  await uploadDirectoryToR2(outputDir, `videos/${lessonId}`)
+  await job.updateProgress(90)
+
+  // 3. Update lesson in MongoDB
+  await Lesson.findByIdAndUpdate(lessonId, {
+    'video.status': 'ready',
+    'video.masterPlaylist': `videos/${lessonId}/master.m3u8`,
+    'video.sources': [
+      { quality: '360p', hlsUrl: `videos/${lessonId}/360p/index.m3u8` },
+      { quality: '720p', hlsUrl: `videos/${lessonId}/720p/index.m3u8` },
+      { quality: '1080p', hlsUrl: `videos/${lessonId}/1080p/index.m3u8` }
+    ]
+  })
+
+  // 4. Cleanup temp files
+  await fs.rm(tempFilePath)
+  await fs.rm(outputDir, { recursive: true })
+
+  await job.updateProgress(100)
+  return { success: true, lessonId }
+}, { connection: redis, concurrency: 2 })
+
+transcodeWorker.on('failed', async (job, err) => {
+  await Lesson.findByIdAndUpdate(job!.data.lessonId, { 'video.status': 'failed' })
+  logger.error('Transcode failed', { jobId: job!.id, error: err.message })
+})
+```
+
+---
+
+## 12. CUSTOM VIDEO PLAYER
+
+### 12.1 Package Selection: Vidstack or Plyr
+**Recommendation: Vidstack (react-player alternative with HLS support)**
+- Native HLS support via hls.js
+- Quality selection built-in
+- Keyboard shortcuts out of the box
+- Picture-in-picture support
+- Fullscreen support
+- Accessible (WCAG 2.1)
+- Customizable via CSS variables (matches our theme system)
+
+**Alternative: Plyr (simpler, smaller bundle)**
+
+### 12.2 Player Features Implementation
+```
+Keyboard Shortcuts:
+  Space / K       → Play / Pause
+  ArrowLeft / J   → Rewind 5s
+  ArrowRight / L  → Forward 5s
+  ArrowUp         → Volume +10%
+  ArrowDown       → Volume -10%
+  M               → Mute toggle
+  F               → Fullscreen toggle
+  P               → Picture-in-picture
+  Numbers 0-9     → Seek to 0%–90%
+  Shift+>         → Speed up
+  Shift+<         → Speed down
+
+Controls:
+  - Play/Pause button
+  - Progress bar (seekable, buffered indicator)
+  - Volume slider
+  - Duration / Current time
+  - Quality selector (360p / 720p / 1080p / Auto)
+  - Speed selector (0.25x, 0.5x, 0.75x, 1x, 1.25x, 1.5x, 1.75x, 2x)
+  - Picture-in-picture button
+  - Fullscreen button
+  - Settings (subtitles placeholder)
+
+Progress Saving:
+  - Every 5 seconds (debounced): POST /api/progress/update
+  - On pause: immediate save
+  - On unmount: save current position
+  - On resume: seek to saved position automatically
+  - "Pick up where you left off" toast shown
+```
+
+### 12.3 VideoPlayer Component
+```typescript
+// components/player/VideoPlayer.tsx
+interface VideoPlayerProps {
+  lessonId: string
+  hlsUrl: string                  // Signed master.m3u8 URL
+  savedPosition?: number          // Seconds to resume from
+  onProgress: (seconds: number, completed: boolean) => void
+  onEnded: () => void
+}
+
+// Uses Vidstack's <MediaPlayer> + <MediaProvider> + <DefaultVideoLayout>
+// Applies theme variables: --plyr-color-main = var(--accent-primary)
+// HLS initialization via useHls hook
+// Auto-quality by default, user can override
+// Saves progress via useVideoProgress hook
+```
+
+---
+
+## 13. CACHING STRATEGY (Redis)
+
+### 13.1 Cache Keys & TTLs
+```
+Key Pattern                              TTL        Invalidation
+─────────────────────────────────────────────────────────────────
+courses:featured                         600s       On course update/publish
+courses:list:page:{n}:limit:{n}         300s       On any course change
+courses:slug:{slug}                      300s       On that course change
+courses:search:{query}:{page}           60s        Time-based only
+courses:curriculum:{courseId}           600s       On lesson add/edit
+stats:admin:dashboard                   120s       Time-based
+enrollments:count:{courseId}            300s       On new enrollment
+user:profile:{userId}                   300s       On profile update
+```
+
+### 13.2 Cache Helper Utility
+```typescript
+// utils/cache.ts
+export class CacheService {
+  constructor(private redis: Redis) {}
+
+  async get<T>(key: string): Promise<T | null> {
+    const cached = await this.redis.get(key)
+    return cached ? JSON.parse(cached) : null
+  }
+
+  async set(key: string, value: unknown, ttl: number): Promise<void> {
+    await this.redis.setex(key, ttl, JSON.stringify(value))
+  }
+
+  async del(key: string): Promise<void> {
+    await this.redis.del(key)
+  }
+
+  async delPattern(pattern: string): Promise<void> {
+    const keys = await this.redis.keys(pattern)
+    if (keys.length > 0) await this.redis.del(...keys)
+  }
+
+  // Stale-While-Revalidate pattern
+  async getOrSet<T>(key: string, fetcher: () => Promise<T>, ttl: number): Promise<T> {
+    const cached = await this.get<T>(key)
+    if (cached) return cached
+    const fresh = await fetcher()
+    await this.set(key, fresh, ttl)
+    return fresh
+  }
+}
+```
+
+### 13.3 Cache Invalidation Strategy
+```typescript
+// When admin updates a course:
+await cacheService.del(`courses:slug:${course.slug}`)
+await cacheService.delPattern('courses:list:*')
+await cacheService.del('courses:featured')
+await cacheService.del(`courses:curriculum:${courseId}`)
+```
+
+### 13.4 Rate Limiting with Redis
+```typescript
+// middleware/rateLimiter.ts
+import { rateLimit } from 'express-rate-limit'
+import { RedisStore } from 'rate-limit-redis'
+
+export const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  store: new RedisStore({ client: redisClient }),
+  message: { success: false, message: 'Too many requests' }
+})
+
+export const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10, // Stricter for auth routes
+  store: new RedisStore({ client: redisClient })
+})
+
+export const searchLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  store: new RedisStore({ client: redisClient })
+})
+```
+
+---
+
+## 14. JOB QUEUE STRATEGY (BullMQ)
+
+### 14.1 Queue Definitions
+```
+Queue: video:transcode
+  - Video HLS transcoding jobs
+  - Concurrency: 2 (R2 upload bound, not CPU-bound on free hosting)
+  - Retry: 3 attempts, exponential backoff
+  - Priority: All equal (no paid priority needed for prototype)
+
+Queue: email:send
+  - Welcome email (signup)
+  - Enrollment confirmation
+  - Payment receipt
+  - Course/lesson update notifications
+  - Admin broadcast announcements
+  - Retry: 3 attempts, exponential backoff
+
+Queue: thumbnail:generate
+  - Auto-generate video thumbnail at 10% of duration
+```
+
+### 14.2 Job Status Polling (Frontend)
+```typescript
+// Admin uploads video → gets jobId
+// Frontend polls every 3 seconds:
+GET /api/videos/job/:jobId
+→ { status: 'waiting' | 'active' | 'completed' | 'failed', progress: number }
+
+// UI shows:
+// [████████░░] 80% — Processing your video...
+// [██████████] Done! — Video is ready
+```
+
+### 14.3 BullMQ Dashboard (Admin)
+```
+/admin/jobs — Simple job status view
+Shows: Pending | Active | Completed | Failed jobs
+Each job: lesson name, progress bar, status, timestamps
+Failed jobs: error message + retry button
+```
+
+---
+
+## 15. PAYMENT INTEGRATION (RAZORPAY)
+
+### 15.1 Payment Flow
+```
+Step 1: Student clicks "Enroll Now"
+  → POST /api/payments/create-order
+  → Server creates Razorpay order (amount, currency, receipt)
+  → Returns { orderId, amount, currency, keyId }
+
+Step 2: Frontend opens Razorpay checkout
+  → Uses Razorpay SDK (script tag or npm)
+  → On success: receives { razorpay_payment_id, razorpay_order_id, razorpay_signature }
+
+Step 3: Frontend sends verification
+  → POST /api/payments/verify
+  → Body: { razorpayOrderId, razorpayPaymentId, razorpaySignature }
+
+Step 4: Server verifies signature
+  → HMAC-SHA256(orderId + "|" + paymentId, secret) === signature
+  → On valid: update payment status → create enrollment
+  → Queue enrollment confirmation email + in-app notification
+  → Return: { success: true, courseSlug }
+
+Step 5: Redirect to /learn/{courseSlug}
+```
+
+### 15.2 Signature Verification (Critical Security)
+```typescript
+// payment.service.ts
+import crypto from 'crypto'
+
+export const verifyRazorpaySignature = (
+  orderId: string,
+  paymentId: string,
+  signature: string
+): boolean => {
+  const body = `${orderId}|${paymentId}`
+  const expectedSignature = crypto
+    .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
+    .update(body)
+    .digest('hex')
+
+  // Constant-time comparison to prevent timing attacks
+  return crypto.timingSafeEqual(
+    Buffer.from(expectedSignature, 'hex'),
+    Buffer.from(signature, 'hex')
+  )
+}
+```
+
+### 15.3 Idempotency (Prevent Double Enrollment)
+```typescript
+// Before creating enrollment, check:
+const existingEnrollment = await Enrollment.findOne({ userId, courseId })
+if (existingEnrollment) throw new ApiError(409, 'Already enrolled')
+
+// Also check payment record hasn't been used:
+const payment = await Payment.findOne({ razorpayOrderId })
+if (payment.status === 'paid') throw new ApiError(409, 'Payment already processed')
+```
+
+---
+
+## 16. STUDENT DASHBOARD
+
+### 16.1 Pages & Features
+```
+/dashboard — Overview
+  - Welcome back, {name}!
+  - Continue Learning: Last 3 watched lessons (course thumbnail, lesson title, progress bar)
+  - My Stats: Courses enrolled, lessons completed, hours watched
+  - Recent Activity feed
+  - Notifications panel (recent in-app notifications)
+
+/my-courses — All Enrollments
+  - Grid of enrolled courses
+  - Each card: thumbnail, title, progress %, "Continue" button
+  - Filter: In Progress | Completed
+  - Sort: Recently Enrolled | Progress
+
+/learn/:courseSlug/:lessonId — Learning Page
+  - Video player (full feature)
+  - Lesson sidebar (all lessons, completed indicators)
+  - Progress auto-saves
+  - Next/Prev navigation
+  - Mark as complete button
+
+/profile — Student Profile
+  - Edit name, avatar
+  - Change password
+  - Theme preference (syncs with themeStore)
+```
+
+### 16.2 Progress Calculation
+```typescript
+// Computed on-the-fly (or cached per course per user):
+const totalLessons = course.totalLessons
+const completedLessons = await Progress.countDocuments({
+  userId, courseId, isCompleted: true
+})
+const progressPercent = Math.round((completedLessons / totalLessons) * 100)
+```
+
+---
+
+## 17. ADMIN DASHBOARD
+
+### 17.1 Dashboard Stats
+```
+/admin — Overview
+  - Total Courses | Total Students | Total Enrollments | Revenue (test)
+  - Recent Enrollments table (last 10)
+  - Revenue chart (bar chart, last 7 days)
+  - Top Courses by enrollment
+  - Job queue status widget
+  - Send Announcement form (broadcast via WebSocket + email)
+```
+
+### 17.2 Course Management
+```
+/admin/courses — Course List
+  - DataTable: title, lessons, enrollments, status (published/draft), actions
+  - Quick publish/unpublish toggle
+  - Search + filter
+  - Bulk actions: delete, publish, unpublish
+  - "New Course" button
+
+/admin/courses/new — Course Creator
+  - Multi-step form:
+    Step 1: Basic Info (title, description, category, level, price, thumbnail)
+    Step 2: Sections & Lessons
+    Step 3: Settings (featured, published)
+
+  - Lesson form includes:
+    - Title, description, order
+    - isPreview toggle
+    - Video upload → triggers BullMQ job → shows progress bar
+    - Resources (title + URL pairs)
+
+/admin/courses/:id/edit — Course Editor (same as creator but pre-filled)
+```
+
+### 17.3 Student Management
+```
+/admin/students — Student Table
+  - Columns: Name, Email (decrypted for admin), Joined, Enrollments count
+  - Search by name/email
+  - Click row → student detail
+  - Deactivate/activate student
+
+/admin/students/:id — Student Detail
+  - Profile info
+  - Enrolled courses list + progress
+  - Payment history
+```
+
+### 17.4 Enrollments
+```
+/admin/enrollments
+  - Table: Student, Course, Enrolled Date, Payment ID, Status
+  - Filter by course, date range
+  - Export button
+```
+
+---
+
+## 18. EXPORT / IMPORT FEATURE (Admin)
+
+### 18.1 Export
+```
+Export Courses:
+  GET /api/admin/export/courses?format=json|csv
+  JSON: Full course data including sections and lesson metadata
+  CSV: Flattened course data (one row per course)
+
+Export Students:
+  GET /api/admin/export/students?format=json|csv
+  Note: Email is DECRYPTED for admin export (logged action)
+
+Export Enrollments:
+  GET /api/admin/export/enrollments?format=json|csv
+  Includes: student name, course name, date, payment status
+
+Implementation:
+  - JSON: res.setHeader('Content-Type', 'application/json') + res.json(data)
+  - CSV: Use 'csv-stringify' npm package (lightweight, streaming)
+  - All exports are streamed, not loaded entirely in memory
+  - Rate limited: 1 export per minute per admin
+```
+
+### 18.2 Import
+```
+Import Courses:
+  POST /api/admin/import/courses
+  Accepts: JSON or CSV
+  Process:
+    1. Parse file (papaparse for CSV, JSON.parse for JSON)
+    2. Validate each row with Zod schema
+    3. Skip duplicates (check by slug)
+    4. Insert valid records
+    5. Return: { imported: N, skipped: M, errors: [...] }
+
+Import Students:
+  POST /api/admin/import/students
+  Process:
+    1. Parse and validate
+    2. Generate temp password for each student
+    3. Send welcome email (queued via BullMQ + Nodemailer)
+    4. Return summary
+
+Frontend Import UI:
+  - Drag-and-drop zone
+  - File type validation (JSON/CSV only)
+  - Preview table (first 5 rows before confirming)
+  - Progress indicator
+  - Result summary (imported / skipped / errors)
+  - Download error report option
+```
+
+### 18.3 Import CSV Template
+```
+Admin can download CSV template:
+GET /api/admin/templates/courses.csv
+GET /api/admin/templates/students.csv
+So they know exact column format expected
+```
+
+---
+
+## 19. SECURITY ARCHITECTURE
+
+### 19.1 Security Checklist
+
+**Authentication:**
+- [x] bcrypt password hashing (cost factor 12)
+- [x] JWT with short expiry (15 min access, 7 day refresh)
+- [x] Refresh token rotation (old token invalidated on use)
+- [x] Refresh token stored in Redis (server-side revocation possible)
+- [x] httpOnly cookie for refresh token (XSS-proof)
+- [x] CSRF protection via SameSite=Strict cookie
+
+**Authorization:**
+- [x] Every protected route checks JWT first
+- [x] Role-based middleware (requireRole)
+- [x] Enrollment check before video access (not just auth)
+- [x] Admin routes completely separate, double-checked
+
+**Input Validation:**
+- [x] All request bodies validated with Zod on server
+- [x] File upload: type check (video/mp4 only), size limit (500MB)
+- [x] MongoDB injection: Mongoose sanitizes by default
+- [x] XSS: React escapes by default, no dangerouslySetInnerHTML
+
+**API Protection:**
+- [x] Helmet (sets 11 security headers)
+- [x] CORS: Only allow frontend domain
+- [x] Rate limiting on all routes (stricter on auth)
+- [x] Request size limit (JSON body: 10MB max)
+
+**Payment Security:**
+- [x] HMAC-SHA256 signature verification
+- [x] Timing-safe comparison (prevent timing attacks)
+- [x] Razorpay key secret NEVER exposed to client
+- [x] Idempotency check (no double enrollment)
+- [x] Payment amount validated server-side (not trusted from client)
+
+**Data Security:**
+- [x] AES-256-GCM encryption for PII at rest
+- [x] SHA-256 hash for email lookup
+- [x] Encryption key in environment variables only
+- [x] HTTPS everywhere (enforced by Vercel + Railway)
+
+**Content Security:**
+- [x] Signed URLs for video content (expires 2 hours)
+- [x] Video access check: must be enrolled (or preview lesson)
+- [x] Admin file uploads: stored temp, immediately moved to R2
+- [x] Temp files cleaned up after processing
+
+**Logging & Monitoring:**
+- [x] Winston structured logging (JSON format)
+- [x] Error logging with stack traces (non-production: sanitized)
+- [x] Admin actions logged (export with decrypted data = audit log)
+- [x] No sensitive data in logs (no passwords, no full tokens)
+
+### 19.2 Security Headers (Helmet)
+```javascript
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "https://checkout.razorpay.com"],
+      frameSrc: ["https://api.razorpay.com"],
+      imgSrc: ["'self'", "data:", "https://*.r2.cloudflarestorage.com"],
+      mediaSrc: ["'self'", "https://*.r2.cloudflarestorage.com"],
+      connectSrc: ["'self'", "https://api.razorpay.com"]
+    }
+  },
+  hsts: { maxAge: 31536000, includeSubDomains: true },
+  noSniff: true,
+  xssFilter: true,
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' }
+}))
+```
+
+---
+
+## 20. COST OPTIMIZATION STRATEGY
+
+### 20.1 Estimated Monthly Cost Breakdown
+```
+Service              | Free Tier           | Paid If Exceeded
+─────────────────────|─────────────────────|──────────────────
+MongoDB Atlas M0     | 512MB FREE          | $9/mo (M2)
+Redis Cloud          | 30MB FREE           | $7/mo (30MB+)
+Cloudflare R2        | 10GB FREE           | $0.015/GB
+Cloudflare CDN       | Unlimited FREE      | —
+Railway (backend)     | Hobby / trial       | ~$5/mo (always on)
+Vercel (frontend)    | FREE                | —
+─────────────────────|─────────────────────|──────────────────
+TOTAL (prototype)    | ~₹0–₹150/month      | Max ₹700/month
+```
+
+### 20.2 Cost Optimization Decisions
+
+**Videos on Cloudflare R2 (not S3):**
+- R2 has NO egress fees (S3 charges ~$0.09/GB egress)
+- For video delivery, egress fees are the biggest cost driver
+- R2 + Cloudflare CDN = essentially free video delivery at prototype scale
+
+**FFmpeg on demand (not always-on processing server):**
+- Videos are processed by the backend server itself (on Railway)
+- For a prototype with 4–5 courses and 10 lessons each, this is fine
+- No separate EC2/Compute instance needed
+
+**Redis free tier is sufficient:**
+- 30MB handles thousands of cached responses
+- Cache keys are compressed JSON strings
+- Average cached course object ≈ 2KB → 15,000 cached items fit in 30MB
+
+**MongoDB Atlas free tier:**
+- 512MB handles: 4 courses × 12 lessons × metadata = negligible
+- User data + progress data for demo purposes easily fits
+
+**Vercel for frontend = permanent free:**
+- Static React build
+- Global CDN included
+- 100GB bandwidth/month free
+
+---
+
+## 21. TESTING STRATEGY
+
+### 21.1 What to Test (Realistic for Hackathon)
+Focus on **meaningful tests**, not 100% coverage.
+
+### 21.2 Backend Tests (Vitest or Jest)
+```
+tests/
+├── auth.test.ts
+│   - POST /register: valid input → 201
+│   - POST /register: duplicate email → 409
+│   - POST /login: valid credentials → 200 + tokens
+│   - POST /login: wrong password → 401
+│   - GET /me: without token → 401
+│   - GET /me: with valid token → 200
+
+├── course.test.ts
+│   - GET /courses: returns published courses (cached)
+│   - GET /courses/:slug: public access works
+│   - POST /courses: admin can create
+│   - POST /courses: student → 403
+
+├── payment.test.ts
+│   - POST /payments/verify: valid signature → enrollment created
+│   - POST /payments/verify: invalid signature → 400
+│   - POST /payments/verify: double submission → 409
+
+├── enrollment.test.ts
+│   - GET /enrollments/my: only returns own enrollments
+│   - Lesson access without enrollment → 403
+│   - Preview lesson access without auth → 200
+```
+
+### 21.3 Frontend Tests (React Testing Library + Vitest)
+```
+- AuthContext: login flow, token refresh
+- ProtectedRoute: redirects unauthenticated users
+- CourseCard: renders correct data
+- VideoPlayer: progress saving calls correct interval
+```
+
+### 21.4 Integration Tests
+```
+- Full auth flow: register → login → access protected route
+- Full payment flow: create order → mock verify → check enrollment
+- Full video flow: upload → poll job → access signed URL
+```
+
+---
+
+## 22. DEPLOYMENT STRATEGY
+
+### 22.1 Frontend (Vercel)
+```
+Framework: Vite (React)
+Build command: npm run build
+Output: dist/
+Environment variables: VITE_API_URL, VITE_RAZORPAY_KEY_ID
+
+Auto-deploy: Push to main branch → Vercel auto-builds
+Preview deployments: Every PR gets a preview URL
+```
+
+### 22.2 Backend (Railway)
+```
+Type: Web Service (Node.js)
+Build command: npm install && npm run build
+Start command: npm start
+Environment: Node 22.x (minimum)
+Environment variables: All secrets via Railway dashboard
+
+Note: Railway provides always-on hosting on Hobby tier (~$5/mo).
+Ephemeral /tmp disk is used for Multer temp uploads during FFmpeg jobs.
+Configure health check on GET /api/health.
+```
+
+### 22.3 Environment Variables (Railway)
+```
+NODE_ENV=production
+PORT=5000
+MONGODB_URI=mongodb+srv://...
+REDIS_URL=redis://...
+JWT_ACCESS_SECRET=...
+JWT_REFRESH_SECRET=...
+ENCRYPTION_KEY=...
+RAZORPAY_KEY_ID=...
+RAZORPAY_KEY_SECRET=...
+R2_ACCOUNT_ID=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET_NAME=veolms-videos
+R2_PUBLIC_URL=https://pub-xxx.r2.dev
+FRONTEND_URL=https://veolms.vercel.app
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=...
+SMTP_PASS=...
+SMTP_FROM=VeoLMS <noreply@veolms.com>
+```
+
+### 22.4 CI/CD
+```
+GitHub Actions:
+  on: push to main
+  jobs:
+    - lint (ESLint + TypeScript check)
+    - test (run test suite)
+    - deploy-frontend (Vercel CLI)
+    - deploy-backend (Railway CLI or GitHub integration)
+```
+
+### 22.5 Pre-Launch Checklist
+```
+□ All environment variables set in both Vercel and Railway
+□ CORS configured with correct Vercel URL
+□ MongoDB Atlas IP whitelist: 0.0.0.0/0 (or Railway egress IPs)
+□ SMTP credentials verified (test welcome email sends)
+□ Socket.IO connects over WSS in production
+□ Razorpay webhook URL configured (if using webhooks)
+□ R2 bucket CORS policy allows frontend domain
+□ Admin account seeded in DB
+□ 4–5 courses with lessons seeded
+□ At least 2 preview lessons per course
+□ Test payment flow end-to-end
+□ Test all 7 themes
+□ Test on mobile viewport
+□ Lighthouse score: aim for 90+ performance
+```
+
+---
+
+## 23. PERFORMANCE TARGETS
+
+### 23.1 Frontend Targets
+```
+Metric                        Target
+────────────────────────────────────────
+First Contentful Paint        < 1.5s
+Largest Contentful Paint      < 2.5s
+Time to Interactive           < 3.0s
+Cumulative Layout Shift       < 0.1
+Bundle size (initial)         < 200KB gzipped
+API response (cached)         < 50ms
+API response (DB hit)         < 200ms
+```
+
+### 23.2 Frontend Performance Techniques
+```
+- Code splitting: React.lazy() + Suspense for all pages
+- Image optimization: WebP format, lazy loading
+- Video: HLS adaptive bitrate (auto-adjusts to connection)
+- TanStack Query: staleTime=5min, background refetch
+- React.memo on CourseCard, LessonItem
+- Virtual list for long lesson lists (react-virtual)
+- Service Worker: cache static assets (optional)
+- Vite build: tree-shaking + minification
+```
+
+### 23.3 Backend Performance Techniques
+```
+- Redis cache for all public routes
+- MongoDB indexes on all query fields
+- Lean queries: .lean() for read-only operations
+- Pagination on all list endpoints (default: 12 items)
+- Response compression: compression middleware
+- Keep-alive connections to MongoDB and Redis
+- Streaming for file downloads / exports
+```
+
+---
+
+## 24. WHAT NOT TO DO (Anti-Patterns)
+
+### 24.1 Architecture Anti-Patterns
+```
+❌ Don't put business logic in controllers — it goes in services
+❌ Don't use mongoose .populate() chains > 2 levels deep
+❌ Don't store videos in MongoDB GridFS — use R2
+❌ Don't call MongoDB on every request without Redis caching
+❌ Don't use global try/catch blocks — use asyncHandler wrapper
+❌ Don't hardcode secrets anywhere — use process.env with validation
+❌ Don't mutate Mongoose documents then return them raw
+❌ Don't use any[] types — always type properly
+```
+
+### 24.2 Security Anti-Patterns
+```
+❌ Don't store access token in localStorage (XSS risk)
+❌ Don't trust payment amount from client — recalculate server-side
+❌ Don't skip Razorpay signature verification
+❌ Don't log passwords, tokens, or encryption keys
+❌ Don't allow admin routes without role check
+❌ Don't serve video without enrollment check
+❌ Don't use MD5 or SHA1 for password hashing
+❌ Don't expose stack traces in production error responses
+```
+
+### 24.3 Frontend Anti-Patterns
+```
+❌ Don't fetch data in useEffect when React Query can do it
+❌ Don't store derived state — compute it from source of truth
+❌ Don't use index as key in lists (except static lists)
+❌ Don't import entire lodash — use specific imports
+❌ Don't skip TypeScript types for "quick" implementations
+❌ Don't put theme logic inline — use the themeStore
+❌ Don't inline styles — use Tailwind + CSS variables
+❌ Don't use pixel values directly — use the spacing scale
+```
+
+### 24.4 Performance Anti-Patterns
+```
+❌ Don't load all lessons on course page — paginate or virtualize
+❌ Don't auto-play videos without user interaction
+❌ Don't upload raw MP4 to frontend — always use HLS
+❌ Don't poll job status faster than every 2 seconds
+❌ Don't send full course objects where only metadata needed
+```
+
+---
+
+## 25. DEVELOPMENT PHASES & SPRINT PLAN
+
+### Phase 0: Setup (Day 1 — 4 hours)
+```
+□ Create monorepo structure (apps/client, apps/server, packages/shared)
+□ Initialize TypeScript configs for all 3 packages
+□ Setup ESLint + Prettier
+□ Install all dependencies
+□ Docker Compose for local MongoDB + Redis
+□ Create .env.example
+□ Setup Winston logger
+□ Basic Express app with health check endpoint
+□ Basic Vite React app with Tailwind + Shadcn installed
+□ Create shared types package
+□ GitHub repo + initial commit
+```
+
+### Phase 1: Core Backend — Auth + Courses (Days 2–3)
+```
+□ MongoDB connection + Mongoose
+□ Redis connection
+□ User model (with AES-GCM encryption)
+□ Auth routes: register, login, logout, refresh, me
+□ JWT + httpOnly cookie flow
+□ Course model + routes (CRUD)
+□ Lesson model + routes
+□ Caching middleware for course routes
+□ apiResponse + apiError + asyncHandler utilities
+□ Basic rate limiting
+□ Zod validation on all inputs
+```
+
+### Phase 2: Core Frontend — Public + Auth (Day 3–4)
+```
+□ Router setup (React Router latest)
+□ Axios instance with interceptors (auto token refresh)
+□ AuthStore (Zustand)
+□ ThemeStore (Zustand) + all 7 CSS themes
+□ Theme switcher component
+□ Navbar (responsive)
+□ Footer
+□ LoginPage + RegisterPage (with React Hook Form + Zod)
+□ ProtectedRoute component
+□ Homepage (Hero + CourseGrid)
+□ CourseCard component
+□ CoursePage (public detail page)
+□ Loading skeletons for all data states
+```
+
+### Phase 3: Video Pipeline (Days 4–5)
+```
+□ Multer file upload route
+□ BullMQ queue + worker setup
+□ FFmpeg transcode function
+□ Cloudflare R2 client + upload utility
+□ Signed URL generation
+□ Lesson video status tracking
+□ Admin video upload UI with progress polling
+□ Vidstack player integration
+□ HLS playback with hls.js
+□ Quality selector
+□ Keyboard shortcuts
+□ Progress save (debounced API calls)
+□ Resume playback from saved position
+```
+
+### Phase 4: Payments + Enrollment (Day 5)
+```
+□ Razorpay order creation
+□ Razorpay checkout (frontend)
+□ Payment verification endpoint
+□ Enrollment creation
+□ Access control: enrolled-only lesson access
+□ Preview lesson access (no auth needed)
+□ Enrollment check middleware
+```
+
+### Phase 5: Student Dashboard (Day 6)
+```
+□ Dashboard overview page
+□ My Courses page
+□ Learn page (player + sidebar)
+□ Progress tracking
+□ Recently watched
+□ Continue learning widget
+□ Mark lesson complete
+□ Course completion detection
+□ Student profile page
+```
+
+### Phase 6: Admin Dashboard (Day 6–7)
+```
+□ Admin layout + sidebar
+□ Dashboard stats + charts
+□ Course list with DataTable
+□ Course creator (multi-step form)
+□ Course editor
+□ Section + lesson management (drag to reorder)
+□ Student list
+□ Enrollment list
+□ Job queue status widget
+□ Export: JSON + CSV for courses, students, enrollments
+□ Import: JSON + CSV with validation + preview
+□ CSV template downloads
+```
+
+### Phase 7: Email + Real-Time Notifications (Day 7)
+```
+□ Nodemailer transporter + HTML email templates
+□ BullMQ email:send worker
+□ Emails on: signup, enrollment, payment, course updates
+□ Socket.IO server attached to HTTP server
+□ Notification model + REST routes
+□ NotificationBell component + notificationStore
+□ Admin announcement broadcast (email + in-app)
+□ Mark read / unread count sync
+```
+
+### Phase 8: Polish + Security Hardening (Day 7–8)
+```
+□ Helmet + CSP configuration
+□ CORS tightening
+□ Error boundaries on all major sections
+□ Empty states for all lists
+□ 404 page
+□ Loading states + error states everywhere
+□ Mobile responsiveness audit
+□ All 7 themes tested
+□ Keyboard accessibility check
+□ Performance: React.lazy + code splitting
+□ Lighthouse audit + fix issues
+□ Write tests (auth, payment, course API)
+```
+
+### Phase 9: Deployment + Seeding (Day 8–9)
+```
+□ Seed script: create admin + student accounts
+□ Seed 4–5 courses with sections + lessons
+□ Upload real YouTube-sourced lesson videos (HLS)
+□ Deploy frontend to Vercel
+□ Deploy backend to Railway
+□ Set all environment variables
+□ Test full flow on production
+□ Fix any production-specific issues
+□ Final QA pass
+```
+
+### Phase 10: Documentation + Submission (Day 9–10)
+```
+□ README with setup instructions
+□ Architecture explanation document
+□ API documentation (can use Postman collection)
+□ Cost breakdown document
+□ Record a 2-minute demo video (optional but impressive)
+□ Prepare submission email
+```
+
+---
+
+## 26. ENVIRONMENT VARIABLES REFERENCE
+
+### 26.1 Backend (.env)
+```env
+# Server
+NODE_ENV=development
+PORT=5000
+
+# Database
+MONGODB_URI=mongodb://localhost:27017/veolms
+
+# Redis
+REDIS_URL=redis://localhost:6379
+
+# JWT
+JWT_ACCESS_SECRET=<64-char-hex>
+JWT_REFRESH_SECRET=<64-char-hex>
+JWT_ACCESS_EXPIRY=15m
+JWT_REFRESH_EXPIRY=7d
+
+# Encryption
+ENCRYPTION_KEY=<64-char-hex>
+
+# Cloudflare R2
+R2_ACCOUNT_ID=<account-id>
+R2_ACCESS_KEY_ID=<r2-access-key>
+R2_SECRET_ACCESS_KEY=<r2-secret-key>
+R2_BUCKET_NAME=veolms-videos
+R2_PUBLIC_URL=https://pub-xxx.r2.dev
+R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+
+# Razorpay
+RAZORPAY_KEY_ID=rzp_test_xxx
+RAZORPAY_KEY_SECRET=xxx
+
+# App
+FRONTEND_URL=http://localhost:5173
+ADMIN_EMAIL=admin@veolms.com
+ADMIN_PASSWORD=<strong-password>
+
+# Email (Nodemailer)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=<smtp-username>
+SMTP_PASS=<smtp-app-password>
+SMTP_FROM=VeoLMS <noreply@veolms.com>
+```
+
+### 26.2 Frontend (.env)
+```env
+VITE_API_URL=http://localhost:5000/api
+VITE_RAZORPAY_KEY_ID=rzp_test_xxx
+VITE_APP_NAME=VeoLMS
+VITE_WS_URL=ws://localhost:5000
+```
+
+### 26.3 Env Validation (Zod)
+```typescript
+// config/env.ts
+import { z } from 'zod'
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'production', 'test']),
+  PORT: z.string().default('5000'),
+  MONGODB_URI: z.string().url(),
+  REDIS_URL: z.string(),
+  JWT_ACCESS_SECRET: z.string().min(32),
+  JWT_REFRESH_SECRET: z.string().min(32),
+  ENCRYPTION_KEY: z.string().length(64),
+  R2_ACCOUNT_ID: z.string(),
+  R2_ACCESS_KEY_ID: z.string(),
+  R2_SECRET_ACCESS_KEY: z.string(),
+  R2_BUCKET_NAME: z.string(),
+  RAZORPAY_KEY_ID: z.string().startsWith('rzp_'),
+  RAZORPAY_KEY_SECRET: z.string(),
+  FRONTEND_URL: z.string().url(),
+  SMTP_HOST: z.string(),
+  SMTP_PORT: z.coerce.number(),
+  SMTP_USER: z.string(),
+  SMTP_PASS: z.string(),
+  SMTP_FROM: z.string()
+})
+
+export const env = envSchema.parse(process.env)
+// App crashes at startup if any required env var is missing or invalid — GOOD.
+```
+
+---
+
+## 27. EMAIL NOTIFICATIONS (NODEMAILER)
+
+### 27.1 Email Events (Required)
+Every significant user action triggers an email via BullMQ `email:send` queue (non-blocking):
+
+| Event | Recipient | Template |
+|---|---|---|
+| User signup | New user | Welcome + verify account CTA |
+| Course enrollment | Student | Enrollment confirmation + course link |
+| Payment success | Student | Receipt + enrolled course details |
+| Course published/updated | Enrolled students | "New content available" summary |
+| Lesson added | Enrolled students | Lesson title + direct learn link |
+| Admin announcement | All students (or filtered) | Custom title + message body |
+| Password reset | User | Reset link (if implemented) |
+
+### 27.2 Nodemailer Setup
+```typescript
+// config/mailer.ts
+import nodemailer from 'nodemailer'
+
+export const transporter = nodemailer.createTransport({
+  host: env.SMTP_HOST,
+  port: env.SMTP_PORT,
+  secure: env.SMTP_PORT === 465,
+  auth: { user: env.SMTP_USER, pass: env.SMTP_PASS }
+})
+
+// email.service.ts
+export const queueEmail = async (payload: EmailJobPayload) => {
+  await emailQueue.add('send', payload, {
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 5000 }
+  })
+}
+```
+
+### 27.3 Email Worker
+```typescript
+// workers/email.worker.ts
+emailWorker.process(async (job) => {
+  const { to, subject, template, data } = job.data
+  const html = renderTemplate(template, data)  // email.templates.ts
+  await transporter.sendMail({
+    from: env.SMTP_FROM,
+    to,
+    subject,
+    html
+  })
+})
+```
+
+### 27.4 Integration Points
+```
+REGISTER     → auth.service.ts  → queueEmail('welcome', user)
+ENROLL       → payment.service.ts → queueEmail('enrollment', user, course)
+COURSE PATCH → course.service.ts → queueEmail to all enrolled users
+ADMIN POST   → admin.service.ts → queueEmail('announcement', recipients)
+```
+
+> **Dev tip:** Use [Ethereal Email](https://ethereal.email/) or Gmail App Password for local testing. Never commit SMTP credentials.
+
+---
+
+## 28. REAL-TIME IN-APP NOTIFICATIONS (WEBSOCKET)
+
+### 28.1 Architecture
+```
+Admin creates announcement
+  → notification.service.ts saves to MongoDB
+  → Socket.IO emits to room: role:student (or user:{userId})
+  → Nodemailer queue sends parallel email (for users offline)
+
+Student enrolls in course
+  → enrollment.service.ts creates record
+  → Emits notification:new to user:{userId}
+  → Queues enrollment email
+```
+
+### 28.2 Socket.IO Server Setup
+```typescript
+// server.ts — attach Socket.IO to same HTTP server as Express
+import { Server } from 'socket.io'
+import { createServer } from 'http'
+
+const httpServer = createServer(app)
+const io = new Server(httpServer, {
+  cors: { origin: env.FRONTEND_URL, credentials: true }
+})
+
+io.use(async (socket, next) => {
+  const token = socket.handshake.auth.token
+  const user = await verifyJwt(token)
+  socket.data.user = user
+  socket.join(`user:${user.id}`)
+  if (user.role === 'admin') socket.join('role:admin')
+  next()
+})
+
+export { io }
+```
+
+### 28.3 Frontend Integration
+```typescript
+// lib/socket.ts
+import { io } from 'socket.io-client'
+
+export const socket = io(import.meta.env.VITE_WS_URL, {
+  auth: { token: getAccessToken() },
+  autoConnect: false
+})
+
+// hooks/useNotifications.ts
+socket.on('notification:new', (payload) => {
+  notificationStore.addNotification(payload)
+  toast.info(payload.title)  // Sonner toast as fallback
+})
+```
+
+### 28.4 NotificationBell UI
+```
+Navbar right section:
+  - Bell icon with unread badge (from notificationStore)
+  - Dropdown panel: list of notifications (title, time ago, read state)
+  - Click → mark read + navigate to link
+  - "Mark all as read" action
+  - Real-time updates without page refresh
+```
+
+### 28.5 Admin Announcement Flow
+```
+POST /api/admin/announcements
+  Body: { title, message, targetRole: 'student' | 'all', sendEmail: true }
+
+Server:
+  1. Create Notification documents (per user or broadcast record)
+  2. io.to('role:student').emit('announcement:broadcast', { title, message })
+  3. If sendEmail: queue bulk email jobs via BullMQ
+```
+
+---
+
+## APPENDIX A — SEED DATA PLAN
+
+### Courses to Seed (YouTube embeds or HLS):
+```
+1. "HTML Fundamentals" — 10 lessons
+   - Section 1: Getting Started (3 lessons, 2 preview)
+   - Section 2: Elements & Attributes (4 lessons)
+   - Section 3: Forms & Tables (3 lessons)
+
+2. "CSS Mastery" — 10 lessons
+   - Section 1: Selectors & Box Model (3 lessons, 2 preview)
+   - Section 2: Flexbox & Grid (4 lessons)
+   - Section 3: Animations (3 lessons)
+
+3. "JavaScript Essentials" — 12 lessons
+   - Section 1: Basics (4 lessons, 2 preview)
+   - Section 2: Functions & Closures (4 lessons)
+   - Section 3: Async JS (4 lessons)
+
+4. "React from Zero" — 12 lessons
+   - Section 1: JSX & Components (4 lessons, 2 preview)
+   - Section 2: State & Hooks (4 lessons)
+   - Section 3: Context & Routing (4 lessons)
+
+5. "Node.js & Express" — 10 lessons
+   - Section 1: Node.js Basics (3 lessons, 2 preview)
+   - Section 2: Express & REST (4 lessons)
+   - Section 3: Database & Auth (3 lessons)
+```
+
+---
+
+## APPENDIX B — KEY LIBRARIES CHEAT SHEET
+
+```
+Library                 | npm package name
+────────────────────────|──────────────────────────────
+Video Player            | vidstack (react) OR plyr
+HLS.js                  | hls.js
+BullMQ                  | bullmq
+Redis client            | ioredis
+AWS SDK (for R2)        | @aws-sdk/client-s3 + @aws-sdk/s3-request-presigner
+FFmpeg (Node binding)   | fluent-ffmpeg + ffmpeg-static
+Razorpay               | razorpay (server) + razorpay SDK (client CDN)
+CSV generation          | csv-stringify (streaming, lightweight)
+CSV parsing             | papaparse (frontend) / csv-parse (backend)
+Zod validation          | zod
+Mongoose                | mongoose
+JWT                     | jsonwebtoken + @types/jsonwebtoken
+bcrypt                  | bcryptjs (pure JS, no native bindings needed)
+Helmet                  | helmet
+CORS                    | cors
+Rate limiting           | express-rate-limit + rate-limit-redis
+Logging                 | winston + morgan
+Framer Motion           | framer-motion
+TanStack Query          | @tanstack/react-query
+Zustand                 | zustand
+React Hook Form         | react-hook-form
+Shadcn UI               | (npx shadcn-ui@latest init)
+Lucide Icons            | lucide-react
+Date utilities          | date-fns
+Charts (Admin)          | recharts
+Virtual List            | @tanstack/react-virtual
+Nodemailer              | nodemailer
+Socket.IO (server)      | socket.io
+Socket.IO (client)      | socket.io-client
+```
+
+---
+
+## APPENDIX C — FINAL REVIEW CHECKLIST (Before Submission)
+
+```
+□ Live URL works without any local setup
+□ Visitor can browse courses without login
+□ Visitor can see course curriculum without login
+□ Preview lessons work without login
+□ Registration works (new student account)
+□ Login works (student + admin)
+□ Razorpay test payment completes successfully
+□ Enrolled course appears in student dashboard
+□ Video plays with HLS (multi-quality)
+□ Progress saves and resumes correctly
+□ All 7 themes work correctly
+□ Both radius variants work
+□ Admin can create / edit / delete course
+□ Admin can upload video → transcoding completes
+□ Admin export (JSON + CSV) works
+□ Admin import (JSON + CSV) works
+□ Welcome email sends on signup
+□ Enrollment email sends after payment
+□ In-app notification appears on admin announcement (WebSocket)
+□ Notification bell shows unread count and mark-as-read works
+□ Mobile responsive (check on 375px, 768px)
+□ Keyboard shortcuts work in video player
+□ Picture-in-picture works
+□ Fullscreen works
+□ All protected routes redirect unauthenticated users
+□ Students cannot access admin routes
+□ Non-enrolled students cannot access paid lesson video
+□ GitHub repo is public
+□ README explains setup
+□ Admin credentials provided in email
+□ Student credentials provided in email
+□ Architecture explained in email
+```
+
+---
+
+*Document generated for VeoLMS Core Team Selection Challenge.*
+*This PRD is AI-readable and developer-readable. Feed it to any AI coding agent as system context.*
+
+---
+
+# VeoLMS Design System Contract
+
+## Purpose
+
+The entire application must use one centralized design system.
+
+Benefits:
+
+* Consistent UI everywhere
+* Theme changes from one place
+* Accent color changes from one place
+* Radius changes from one place
+* Dark/light theme automatically supported
+* AI-generated pages remain consistent
+* Easy future redesign
+
+---
+
+# Rule 1: Never Use Library Components Directly
+
+❌ Forbidden
+
+```tsx
+<Input />
+<Select />
+<DatePicker />
+<Checkbox />
+<Button />
+<Table />
+```
+
+inside pages or modules.
+
+---
+
+✅ Required
+
+```tsx
+<AppInput />
+<AppSelect />
+<AppDatePicker />
+<AppCheckbox />
+<AppButton />
+<AppTable />
+```
+
+---
+
+# Rule 2: Single Source Of Truth
+
+All reusable components must live inside:
+
+```bash
+src/components/ui/
+```
+
+Example:
+
+```bash
+components/ui/
+│
+├── app-button.tsx
+├── app-input.tsx
+├── app-select.tsx
+├── app-datepicker.tsx
+├── app-checkbox.tsx
+├── app-switch.tsx
+├── app-radio.tsx
+├── app-modal.tsx
+├── app-table.tsx
+├── app-textarea.tsx
+├── app-upload.tsx
+├── app-form-field.tsx
+└── index.ts
+```
+
+---
+
+# Rule 3: Theme Driven Design
+
+No hardcoded colors.
+
+❌
+
+```tsx
+bg-blue-500
+text-green-500
+border-red-500
+```
+
+---
+
+✅
+
+```tsx
+bg-[var(--accent-primary)]
+text-[var(--text-primary)]
+border-[var(--border-default)]
+```
+
+or
+
+```tsx
+className="bg-primary text-primary-foreground"
+```
+
+mapped to CSS variables.
+
+---
+
+# Rule 4: Radius Must Come From Theme
+
+❌
+
+```tsx
+rounded-lg
+rounded-xl
+rounded-md
+```
+
+---
+
+✅
+
+```tsx
+rounded-[var(--radius)]
+```
+
+```tsx
+rounded-[var(--radius-input)]
+```
+
+```tsx
+rounded-[var(--radius-btn)]
+```
+
+---
+
+# Rule 5: Common Form Layout
+
+Every form field uses:
+
+```tsx
+<AppFormField>
+  <Label />
+  <Input />
+  <Description />
+  <Error />
+</AppFormField>
+```
+
+Never manually repeat spacing.
+
+---
+
+# Rule 6: Shared Select Component
+
+All dropdowns must use:
+
+```tsx
+<AppSelect />
+```
+
+Features:
+
+* Theme aware
+* Search support
+* Loading state
+* Error state
+* Consistent height
+
+Example:
+
+```tsx
+<AppSelect
+  placeholder="Select Course"
+  options={courseOptions}
+/>
+```
+
+---
+
+# Rule 7: Shared Date Picker
+
+All date selection must use:
+
+```tsx
+<AppDatePicker />
+```
+
+Features:
+
+* Dark mode
+* Accent color support
+* Same popup styling
+* Same calendar styling
+* Same input height
+
+---
+
+# Rule 8: Shared Checkbox
+
+All checkboxes:
+
+```tsx
+<AppCheckbox />
+```
+
+Features:
+
+* Accent color
+* Focus state
+* Disabled state
+* Error state
+
+---
+
+# Rule 9: Shared Button System
+
+Allowed variants:
+
+```tsx
+<AppButton variant="primary" />
+<AppButton variant="secondary" />
+<AppButton variant="outline" />
+<AppButton variant="ghost" />
+<AppButton variant="danger" />
+```
+
+No custom button styles inside pages.
+
+---
+
+# Rule 10: Shared Data Table
+
+Always:
+
+```tsx
+<AppTable />
+```
+
+Supports:
+
+* Theme
+* Pagination
+* Search
+* Loading
+* Empty state
+
+---
+
+# Rule 11: Design Tokens
+
+Create:
+
+```bash
+src/styles/tokens.css
+```
+
+```css
+:root {
+  --radius: 12px;
+  --radius-input: 10px;
+  --radius-btn: 10px;
+
+  --control-height: 44px;
+
+  --font-size-sm: 14px;
+  --font-size-md: 16px;
+
+  --shadow-sm: ...;
+  --shadow-md: ...;
+}
+```
+
+All components must consume these tokens.
+
+---
+
+# Rule 12: AI Development Rules
+
+## UI DEVELOPMENT RULES
+
+1. Never use AntD, ShadCN, Radix or native HTML controls directly in pages.
+
+2. Always use components from:
+src/components/ui
+
+3. If a required UI component does not exist:
+   - Create it inside components/ui
+   - Make it reusable
+   - Make it theme aware
+   - Export it from components/ui/index.ts
+
+4. Never hardcode:
+   - colors
+   - radius
+   - shadows
+   - spacing
+
+5. Use theme tokens only.
+
+6. Every new page must reuse existing UI components.
+
+7. If a component is duplicated 2+ times:
+   convert it into reusable UI component.
+
+8. Design must automatically support:
+   - Light Mode
+   - Dark Mode
+   - Accent Color Changes
+   - Future Theme Updates
+
+9. Any future redesign should require changing only:
+   - tokens.css
+   - theme.css
+   - ui components
+
+Never modify individual pages for design updates.

@@ -1,0 +1,323 @@
+VeoLMS Core Team Selection Challenge
+Please Read Carefully Before Starting
+Last Date of Submission: 15th July 2026
+Read this entire document properly before writing a single line of code.
+Do not rush into implementation.
+Spend time understanding the requirements, planning the architecture, identifying the challenges, and thinking through the trade-offs.
+I highly encourage you to use AI throughout this challenge.
+You can use tools such as:
+Claude Code
+Codex
+Cursor
+Gemini CLI
+AntiGravity
+Aider
+Open-source coding agents
+Any other AI development tools
+In fact, I expect you to use AI.
+Modern software engineering is not about manually typing every line of code.
+Modern software engineering is about:
+Problem solving
+Architecture decisions
+Product thinking
+Security awareness
+Reviewing generated code
+Improving generated code
+Identifying mistakes
+Making trade-offs
+You are free to give this entire document to an AI agent and ask it to help you plan and build the project.
+However, blindly copy-pasting AI-generated code without understanding it will not help you.
+You will eventually need to explain every major decision that you make.
+Before implementation, I strongly recommend creating a complete plan with AI and reviewing that plan yourself.
+Goal
+Build a production-like LMS inspired by platforms such as Udemy.
+The objective is not to build a perfect LMS.
+The objective is to demonstrate your ability to:
+Design a real product
+Build a real product
+Deploy a real product
+Secure a real product
+Test a real product
+Explain a real product
+This challenge is designed to identify contributors for the open-source VeoLMS project.
+Mandatory Requirements
+If any of these requirements are missing, your submission may not be considered.
+1. Live Deployment (Mandatory)
+The LMS must be deployed.
+The application should be usable by a real user on the internet.
+Accepted platforms:
+Vercel
+Netlify
+Render
+Railway
+AWS
+Any equivalent hosting provider
+The deployment must work correctly.
+I should be able to:
+Open the website
+Browse courses
+Register
+Login
+Preview courses
+Purchase courses
+Access enrolled courses
+Watch videos
+without running the project locally.
+2. Public Homepage
+The homepage should be accessible without login.
+The experience should feel similar to modern learning platforms.
+Requirements:
+Modern UI
+Responsive design
+Course cards
+Course thumbnails
+Featured courses section
+Search functionality
+Attractive hero section
+A visitor should be able to discover courses before creating an account.
+3. Public Course Pages
+Course pages must be accessible without login.
+Each course page should include:
+Course title
+Course thumbnail
+Instructor name
+Description
+Curriculum overview
+Number of lessons
+Preview lessons
+Trailer or introduction video
+Visitors should be able to explore a course before purchasing.
+4. Course Content
+You do NOT need to create your own content.
+You may use publicly available YouTube videos.
+Recommended topics:
+HTML
+CSS
+JavaScript
+React
+Redux
+Node.js
+You may also use videos from my YouTube channel.
+Minimum Requirements:
+At least 3 courses
+At least 5 lessons per course
+You do not need to upload hundreds of lessons.
+Focus on creating a realistic LMS experience.
+5. Authentication
+Required:
+Signup
+Login
+Logout
+Protected routes
+Role-based authorization
+Roles:
+Student
+Admin
+6. Enrollment & Payments
+Razorpay or Stripe integration is mandatory.
+Requirements:
+Razorpay or Stripe test mode
+Successful payment flow
+Enrollment after successful payment
+Enrollment records
+Real payments are NOT required.
+Test payments are sufficient.
+7. Student Dashboard
+Students should have access to:
+My Courses
+Continue Learning
+Progress Tracking
+Recently Watched Lessons
+8. Admin Dashboard
+Admin should be able to:
+Create courses
+Edit courses
+Delete courses
+Create sections
+Create lessons
+Upload videos
+Manage students
+View enrollments
+9. Video Experience
+The video experience is extremely important.
+Expected Features:
+Modern video player
+Keyboard shortcuts
+Progress saving
+Resume playback
+Fullscreen support
+Bonus Features:
+Speed controls
+Picture-in-picture
+Subtitles
+Quality selection
+Think about the experience provided by YouTube and Udemy.
+10. Security (Extremely Important)
+Security is one of the most important evaluation criteria.
+Think carefully about:
+Authentication
+Authorization
+Payment verification
+API protection
+Input validation
+Access control
+Content protection
+Simply making features work is not enough.
+I want to see evidence that security was considered throughout the project.
+Cost Optimization (Extremely Important)
+Real-world software is not only about features.
+It is also about cost.
+One of the evaluation criteria will be how efficiently you design and operate the system.
+Think about:
+Hosting costs
+Storage costs
+Video delivery costs
+Processing costs
+Database costs
+Bandwidth costs
+I encourage you to explore cost-effective solutions.
+Examples:
+Cloudflare R2
+Cloudflare CDN
+Cloudflare Workers
+BunnyCDN
+Backblaze B2
+Serverless architectures
+Edge-based solutions
+Avoid expensive architectures unless they are justified.
+For example:
+If video processing is required, think about processing videos temporarily and shutting down resources afterwards instead of keeping expensive servers running continuously.
+A system costing ₹500 per month may be more impressive than a system costing ₹5000 per month if both achieve similar outcomes.
+In your submission, explain:
+Estimated monthly cost
+Services used
+Why you selected those services
+Trade-offs considered
+Bonus Features
+The following are optional but can significantly strengthen your submission.
+HLS Streaming
+Instead of serving raw MP4 files:
+Generate HLS playlists
+Deliver videos using HLS
+Video Processing Pipeline
+Examples:
+FFmpeg processing
+Multiple quality generation
+Such as:
+360p
+480p
+720p
+1080p
+Allow users to switch between qualities.
+Cloud Storage
+Examples:
+S3
+Cloudflare R2
+Bunny Storage
+Backblaze B2
+Secure Video Delivery
+Examples:
+Signed URLs
+Token-based access
+Temporary URLs
+Automated Testing
+Examples:
+Authentication tests
+API tests
+Payment tests
+A few meaningful tests are sufficient.
+Evaluation Criteria
+Your project will be evaluated on:
+Product Thinking
+How well did you design the LMS?
+User Experience
+Does it feel polished?
+Engineering Quality
+Code quality, architecture, maintainability.
+Security Awareness
+Did you think about real-world threats?
+System Design
+Database design, APIs, scalability.
+Cost Optimization
+How efficiently can the system operate?
+Deployment
+Can real users actually use it?
+Testing
+Did you verify your implementation?
+Communication
+Can you explain your decisions clearly?
+Final Selection Process
+There will NOT be a separate Node.js interview.
+There will NOT be a separate TypeScript interview.
+Instead, your project itself will become your interview.
+If your project is shortlisted, I will personally schedule a WhatsApp call with you.
+Expected duration:
+Approximately 1 to 1.5 hours.
+During this discussion, I will ask you to explain:
+What you built
+Why you built it that way
+Why you selected a particular architecture
+Why you selected a particular database
+Why you selected particular cloud services
+How your authentication works
+How your authorization works
+How your payment flow works
+How your deployment works
+How your security works
+I may ask technical cross-questions throughout the discussion.
+You should be able to explain your own project confidently.
+If you simply generated code using AI without understanding it, that will become obvious during the discussion.
+Using AI is encouraged.
+Blindly depending on AI is not.
+Final selection will depend heavily on your ability to explain and justify your decisions.
+Contribution, Recognition & Compensation
+VeoLMS is an open-source learning project, and selected core team members will be contributing as part of an open-source collaboration.
+This is not a paid internship, job, or salaried role. There will be no fixed salary, stipend, or monetary compensation for being part of the core team.
+However, after the first production version of VeoLMS is successfully released, active core team members who contribute meaningfully to the project will receive a Contribution Certificate and/or a Letter of Recommendation from my side.
+This recognition can be used to showcase your real-world open-source contribution, teamwork, engineering experience, and involvement in building a production-level LMS platform to future employers, clients, and collaborators.
+Please note that this recognition will be given only to selected core team members who actively participate, take ownership, contribute consistently, and help ship the first version of VeoLMS to production.
+Submission Requirements
+Send an email to:
+contact@procodrr.com
+Subject:
+VeoLMS Core Team Submission
+Include the following:
+1. Live Application URL
+The deployed application URL.
+2. GitHub Repository
+Public GitHub repository link.
+3. Admin Credentials
+Provide credentials for an Admin account.
+Example:
+Email:
+Password:
+4. Student Credentials
+Provide credentials for a Student account.
+Example:
+Email:
+Password:
+5. Contact Information
+Provide:
+Mobile Number
+WhatsApp Number
+This will be used for further communication if your project is shortlisted.
+6. Architecture Explanation
+Explain:
+Tech stack
+Database choice
+Authentication strategy
+Deployment strategy
+Storage strategy
+Security considerations
+Cost optimization decisions
+7. Why You Want To Join VeoLMS
+Explain:
+Why this project interests you
+Why you want to contribute
+What strengths you can bring to the team
+8. Challenges Faced
+Explain:
+Technical challenges
+Product decisions
+Trade-offs made
+Lessons learned

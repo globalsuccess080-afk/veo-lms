@@ -37,15 +37,15 @@
 - [Live Demo](#-live-demo)
 - [Features](#-features)
 - [Tech Stack](#-tech-stack)
-- [High-Level Architecture](#-high-level-architecture)
-- [Request Lifecycle](#-request-lifecycle)
-- [Video Pipeline](#-video-pipeline)
-- [Authentication Flow](#-authentication-flow)
-- [Payment Flow](#-payment-flow)
+- [High-Level Architecture](#-high-level-architecture) *(⭐ Must See)*
+- [Request Lifecycle](#-request-lifecycle) *(⭐ Must See)*
+- [Video Pipeline](#-video-pipeline) *(⭐ Must See)*
+- [Authentication Flow](#-authentication-flow) *(⭐ Must See)*
+- [Payment Flow](#-payment-flow) *(⭐ Must See)*
 - [Folder Structure](#-folder-structure)
 - [API Documentation](#-api-documentation)
-- [Database Design](#-database-design)
-- [Security Highlights](#-security-highlights)
+- [Database Design](#-database-design) *(⭐ Must See)*
+- [Security Highlights](#-security-highlights) *(⭐ Must See)*
 - [Video Delivery](#-video-delivery)
 - [Performance Optimizations](#-performance-optimizations)
 - [Cost Optimization](#-cost-optimization)
@@ -53,11 +53,9 @@
 - [Local Setup](#-local-setup)
 - [Docker](#-docker)
 - [Testing](#-testing)
-- [Architecture Documents](#-architecture-documents)
-- [Engineering Decisions](#-engineering-decisions)
+- [Architecture Documents](#-architecture-documents) *(⭐ Must See)*
+- [Engineering Decisions](#-engineering-decisions) *(⭐ Must See)*
 - [Challenges Solved](#-challenges-solved)
-- [Future Improvements](#-future-improvements)
-- [Submission Notes](#-submission-notes)
 
 ---
 
@@ -318,6 +316,42 @@ graph TB
 
 > [!IMPORTANT]
 > Video chunks (`.ts` files) are served **directly from Cloudflare R2** to the browser via expiring pre-signed URLs. The API server **never proxies video data**, keeping API bandwidth costs at zero.
+
+<br />
+
+### 📐 Architecture Diagrams
+
+> Real diagrams generated from the architecture documentation. Each one maps to a specific design doc in [`apps/architecture/`](apps/architecture/).
+
+<br />
+
+**System Architecture — Full Deployment View**
+
+![System Architecture](apps/architecture/system-architecture.png)
+
+<br />
+
+**HLS Streaming Architecture — Adaptive Bitrate Pipeline**
+
+![HLS Architecture](apps/architecture/HLS-architecture.png)
+
+<br />
+
+**Video Processing Pipeline — Transcode to Delivery**
+
+![Video Pipeline](apps/architecture/video-pipeline.png)
+
+<br />
+
+**Video Delivery — Secure Signed URL Flow**
+
+![Video Delivery](apps/architecture/vide-delivery.png)
+
+<br />
+
+**Database Design — Collections and Relationships**
+
+![Database Design](apps/architecture/database-design.png)
 
 ---
 
@@ -614,7 +648,7 @@ erDiagram
 | Threat | Status | Mechanism |
 |---|---|---|
 | Unauthenticated API abuse | ✅ Protected | JWT on all protected routes + Redis rate limits |
-| Brute-force login | ✅ Protected | authLimiter (10 req/15 min), Redis login attempt counters |
+| Brute-force login | ✅ Protected | authLimiter (10 req/15 min); Redis tracks failed attempts by **IP**, **email**, and **userId** for 100% accurate per-identity lockout |
 | Student accessing admin routes | ✅ Protected | `requireRole('admin')` middleware |
 | Non-enrolled user watching paid lessons | ✅ Protected | `checkAccess()` in `lesson.service.ts` |
 | Payment forgery | ✅ Protected | Razorpay HMAC verify + `timingSafeEqual` + amount check |
@@ -976,34 +1010,7 @@ Auth tokens live in memory (Zustand), not localStorage. This prevents XSS from r
 
 ---
 
-## 🔭 Future Improvements
 
-| Improvement | Why |
-|---|---|
-| Widevine / FairPlay DRM | Prevents screen recording; needed for enterprise content licensing |
-| Upload exports to cloud storage | Current filesystem export breaks on horizontal scaling |
-| MongoDB TTL index on notifications | Prevents collection bloat as user count grows |
-| Redis Sentinel or Cluster | High availability for session store and job queue |
-| Separate Redis instances | Isolate BullMQ queues from cache to prevent resource contention |
-| Razorpay webhooks | Push-based payment confirmation is more reliable than client-triggered verify |
-| Course recommendation engine | Collaborative filtering using existing enrollment and progress data |
-| CDN proxy for API | Cloudflare Workers in front of Railway would reduce global latency |
-
----
-
-## 📝 Submission Notes
-
-This project prioritizes **explainability over feature quantity**.
-
-Every non-trivial decision in this codebase has a corresponding document explaining the problem, the chosen approach, the trade-offs accepted, and what was deliberately left out.
-
-**Architecture first.** The `apps/architecture/` folder contains 10 documents covering system design, security, database design, performance, cost, and trade-offs. These were written alongside the code, not after.
-
-**Security by default.** Authentication, authorization, data encryption, payment verification, and video protection are implemented at multiple independent layers. Compromising one layer does not compromise the system.
-
-**Cost is a design constraint.** Every infrastructure service was selected with its free tier limits documented. Monthly cost at prototype scale: ₹0–₹500 ($0–$6 USD).
-
-**Honest trade-offs.** Known limitations — no DRM, no horizontal export scaling, single Redis instance — are documented in [`TRADEOFFS.md`](apps/architecture/TRADEOFFS.md) and [`SECURITY_AUDIT.md`](apps/architecture/SECURITY_AUDIT.md). Not hidden.
 
 ---
 

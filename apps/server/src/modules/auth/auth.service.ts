@@ -66,9 +66,9 @@ export async function register(name: string, email: string, password: string, ot
   return { accessToken, refreshToken, user: formatUser(user) }
 }
 
-async function handleFailedLogin(email: string) {
-  const attemptsKey = `login_attempts:${email}`
-  const lockKey = `login_lock:${email}`
+async function handleFailedLogin(identifier: string) {
+  const attemptsKey = `login_attempts:${identifier}`
+  const lockKey = `login_lock:${identifier}`
   const attempts = await redis.incr(attemptsKey)
   if (attempts === 1) {
     await redis.expire(attemptsKey, 15 * 60) // 15 minutes window
@@ -80,14 +80,24 @@ async function handleFailedLogin(email: string) {
 }
 
 export async function login(email: string, password: string, requiredRole?: 'admin' | 'student') {
-  const lockKey = `login_lock:${email}`
-  const ttl = await redis.ttl(lockKey)
+  let lockKey = `login_lock:${email}`
+  let ttl = await redis.ttl(lockKey)
+
+  const user = await User.findOne({ emailHash: hashEmail(email) })
+
+  if (user) {
+    const userLockKey = `login_lock:${user._id}`
+    const userTtl = await redis.ttl(userLockKey)
+    if (userTtl > ttl) {
+      ttl = userTtl
+    }
+  }
+
   if (ttl > 0) {
     const minutes = Math.ceil(ttl / 60)
     throw new ApiError(403, `Account temporarily locked due to too many failed attempts. Try again in ${minutes} minute(s).`)
   }
 
-  const user = await User.findOne({ emailHash: hashEmail(email) })
   if (!user || !user.isActive) {
     await handleFailedLogin(email)
     throw new ApiError(401, 'Invalid credentials')
@@ -96,6 +106,7 @@ export async function login(email: string, password: string, requiredRole?: 'adm
   const valid = await bcrypt.compare(password, user.password)
   if (!valid) {
     await handleFailedLogin(email)
+    await handleFailedLogin(user._id.toString())
     throw new ApiError(401, 'Invalid credentials')
   }
 
@@ -105,6 +116,7 @@ export async function login(email: string, password: string, requiredRole?: 'adm
 
   // Clear failed attempts on successful login
   await redis.del(`login_attempts:${email}`)
+  await redis.del(`login_attempts:${user._id.toString()}`)
 
   user.lastLogin = new Date()
   await user.save()
@@ -174,6 +186,9 @@ export async function resetPassword(email: string, otp: string, newPassword: str
   await redis.del(`reset_otp:${email}`)
   await redis.del(`login_attempts:${email}`)
   await redis.del(`login_lock:${email}`)
+  await redis.del(`login_attempts:${user._id.toString()}`)
+  await redis.del(`login_lock:${user._id.toString()}`)
 
   return { message: 'Password reset successfully' }
 }
+

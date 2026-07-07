@@ -1,6 +1,7 @@
 import { Enrollment } from './enrollment.model'
 import { Course } from '../course/course.model'
 import { ApiError } from '../../utils/apiError'
+import { formatAssetPath } from '../../utils/assetPath'
 
 export async function getMyEnrollments(userId: string) {
   const enrollments = await Enrollment.find({ userId, isActive: true })
@@ -9,7 +10,10 @@ export async function getMyEnrollments(userId: string) {
     .lean()
 
   return enrollments.map((e) => {
-    const course = e.courseId as { _id?: { toString(): string }; title?: string; slug?: string }
+    const course = e.courseId as { _id?: { toString(): string }; title?: string; slug?: string; thumbnail?: string }
+    const formattedCourse = course && typeof course === 'object'
+      ? { ...course, thumbnail: course.thumbnail ? formatAssetPath(course.thumbnail) : course.thumbnail }
+      : course
     return {
       id: e._id.toString(),
       userId: e.userId.toString(),
@@ -18,7 +22,7 @@ export async function getMyEnrollments(userId: string) {
       completedAt: e.completedAt?.toISOString() || null,
       isActive: e.isActive,
       progress: e.progress,
-      course: e.courseId
+      course: formattedCourse
     }
   })
 }

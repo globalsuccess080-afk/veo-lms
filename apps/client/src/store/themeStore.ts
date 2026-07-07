@@ -37,8 +37,8 @@ function apply(mode: ThemeMode, accent: Accent, radius: RadiusVariant) {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      mode: 'system',
-      accent: 'violet',
+      mode: 'dark',
+      accent: 'green',
       radiusVariant: 'round',
       setMode: (mode) => {
         apply(mode, get().accent, get().radiusVariant)
@@ -63,8 +63,8 @@ export const useThemeStore = create<ThemeState>()(
 )
 
 export function initTheme() {
-  let mode: ThemeMode = 'system'
-  let accent: Accent = 'violet'
+  let mode: ThemeMode = 'dark'
+  let accent: Accent = 'green'
   let radius: RadiusVariant = 'round'
 
   const raw = localStorage.getItem(STORAGE_KEY)

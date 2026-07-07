@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_API_URL: string
+  readonly VITE_ASSET_BASE_URL: string
   readonly VITE_VIDEO_ASSET_BASE_URL: string
   readonly VITE_RAZORPAY_KEY_ID: string
   readonly VITE_APP_NAME: string

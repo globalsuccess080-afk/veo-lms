@@ -4,6 +4,7 @@ import { RouterProvider } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { ThemeToaster } from './components/ui/ThemeToaster'
 import { AppAlert } from './components/ui/AppAlert'
+import { CustomScrollbar } from './components/shared/CustomScrollbar'
 import { router } from './router'
 import { queryClient } from './lib/queryClient'
 import { initTheme } from './store/themeStore'
@@ -23,6 +24,7 @@ createRoot(document.getElementById('root')!).render(
       </SocketProvider>
       <ThemeToaster />
       <AppAlert />
+      <CustomScrollbar />
     </QueryClientProvider>
   </StrictMode>
 )

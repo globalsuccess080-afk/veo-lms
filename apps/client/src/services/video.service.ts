@@ -37,7 +37,7 @@ export async function uploadImage(file: File, onProgress?: (pct: number) => void
       if (e.total && onProgress) onProgress(Math.round((e.loaded / e.total) * 100))
     }
   })
-  return data.data as { url: string; key: string; fileName: string; size: number }
+  return data.data as { path: string; key: string; fileName: string; size: number }
 }
 
 export async function uploadResource(file: File, onProgress?: (pct: number) => void) {
@@ -50,5 +50,5 @@ export async function uploadResource(file: File, onProgress?: (pct: number) => v
       if (e.total && onProgress) onProgress(Math.round((e.loaded / e.total) * 100))
     }
   })
-  return data.data as { url: string; fileName: string; size: number; type: string }
+  return data.data as { path: string; key: string; fileName: string; size: number; type: string }
 }

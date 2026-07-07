@@ -3,7 +3,7 @@ import { Lesson } from '../lesson/lesson.model'
 import { Enrollment } from '../enrollment/enrollment.model'
 import { Course } from '../course/course.model'
 import { updateLearningStreak } from '../streak/streak.service'
-import { storageService } from '../../storage/StorageService'
+import { formatAssetPath } from '../../utils/assetPath'
 
 export async function updateProgress(
   userId: string,
@@ -75,8 +75,8 @@ export async function getRecent(userId: string) {
 
   return recent.map(p => {
     const course = p.courseId as any
-    if (course && course.thumbnail && !course.thumbnail.startsWith('http')) {
-      course.thumbnail = storageService.getPublicUrl(course.thumbnail)
+    if (course?.thumbnail) {
+      course.thumbnail = formatAssetPath(course.thumbnail)
     }
     return {
       lessonId: p.lessonId,

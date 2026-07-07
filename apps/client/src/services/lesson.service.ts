@@ -36,22 +36,14 @@ export async function getVideoUrl(lessonId: string) {
     status: string
     progress: number
     thumbnail: { small: string; medium: string; large: string }
+    thumbnailUrl: string
   }
   const apiBase = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '')
   const videoBase = `${apiBase}/videos/stream`
-  const assetBase = (import.meta.env.VITE_VIDEO_ASSET_BASE_URL || '').replace(/\/$/, '')
-  const join = (base: string, value: string) => value && base ? `${base}/${value.replace(/^\//, '')}` : value
-  const thumbnail = {
-    small: join(assetBase, video.thumbnail.small),
-    medium: join(assetBase, video.thumbnail.medium),
-    large: join(assetBase, video.thumbnail.large),
-  }
   return {
     ...video,
     fileUrl: video.playlistPath
       ? `${videoBase}/${video.playlistPath.replace(/^\//, '')}?token=${encodeURIComponent(video.token)}`
       : '',
-    thumbnail,
-    thumbnailUrl: thumbnail.medium || thumbnail.large || thumbnail.small,
   }
 }

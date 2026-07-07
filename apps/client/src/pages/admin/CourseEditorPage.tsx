@@ -140,7 +140,7 @@ export function CourseEditorPage() {
     const courseJobs = allJobs.filter(j => j.courseId === id)
 
     const [form, setForm] = useState({
-        title: '', description: '', shortDescription: '', thumbnail: '', thumbnailUrl: '', trailerUrl: '',
+        title: '', description: '', shortDescription: '', thumbnail: '', trailerUrl: '',
         instructorName: 'VeoLMS Instructor', price: 499, originalPrice: 999,
         category: 'JavaScript', level: 'beginner', isFeatured: false, isPublished: false
     })
@@ -217,7 +217,7 @@ export function CourseEditorPage() {
         if (course) {
             setForm({
                 title: course.title, description: course.description, shortDescription: course.shortDescription,
-                thumbnail: course.thumbnail, thumbnailUrl: (course as any).thumbnailUrl || course.thumbnail, trailerUrl: course.trailerUrl, instructorName: course.instructor.name,
+                thumbnail: course.thumbnail, trailerUrl: course.trailerUrl, instructorName: course.instructor.name,
                 price: course.price, originalPrice: course.originalPrice, category: course.category,
                 level: course.level, isFeatured: course.isFeatured, isPublished: course.isPublished
             })
@@ -321,12 +321,8 @@ export function CourseEditorPage() {
     const toggleSection = (sid: string) =>
         setOpenSections((prev) => (prev.includes(sid) ? prev.filter((s) => s !== sid) : [...prev, sid]))
 
-    const set = (field: string, value: string | number | boolean, url?: string) => {
-        setForm((p) => {
-            const next = { ...p, [field]: value }
-            if (field === 'thumbnail' && url !== undefined) next.thumbnailUrl = url
-            return next
-        })
+    const set = (field: string, value: string | number | boolean) => {
+        setForm((p) => ({ ...p, [field]: value }))
     }
 
     if (isLoading) {
@@ -374,7 +370,7 @@ export function CourseEditorPage() {
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-6 mt-6">
-                            <Field label="Thumbnail"><ImageUpload value={form.thumbnail} previewUrl={form.thumbnailUrl} onChange={(v, u) => set('thumbnail', v, u)} /></Field>
+                            <Field label="Thumbnail"><ImageUpload value={form.thumbnail} onChange={(v) => set('thumbnail', v)} /></Field>
                             <Field label="Trailer (YouTube embed URL)"><Input className="h-12 bg-canvas hover:border-line-strong transition-all" value={form.trailerUrl} onChange={(e) => set('trailerUrl', e.target.value)} placeholder="https://www.youtube.com/embed/..." /></Field>
                         </div>
 
@@ -820,7 +816,7 @@ function ResourceManager({ resources, setResources }: {
         setProgress(0)
         try {
             const result = await uploadResource(file, setProgress)
-            setResources((prev) => [...prev, { title: result.fileName, url: result.url, type: result.type, size: result.size }])
+            setResources((prev) => [...prev, { title: result.fileName, url: result.path, type: result.type, size: result.size }])
             toast.success('Resource uploaded')
         } catch {
             toast.error('Failed to upload resource')

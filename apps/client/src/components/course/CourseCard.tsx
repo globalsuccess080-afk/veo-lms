@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { Course } from '@veolms/shared'
 import { Star, Users, PlayCircle, Clock, BookOpen } from 'lucide-react'
 import { formatINR, formatDuration } from '../../lib/utils'
+import { resolveAssetUrl } from '../../lib/assets'
 import { Badge } from '../ui/Badge'
 
 const FALLBACK = 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=600&q=80'
@@ -36,7 +37,7 @@ export function CourseCard({ course }: { course: Course }) {
         {/* Thumbnail */}
         <div className="relative aspect-video overflow-hidden" style={{ borderRadius: `var(--rad-card) var(--rad-card) 0 0` }}>
           <img
-            src={course.thumbnail || FALLBACK}
+            src={resolveAssetUrl(course.thumbnail) || FALLBACK}
             alt={course.title}
             loading="lazy"
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"

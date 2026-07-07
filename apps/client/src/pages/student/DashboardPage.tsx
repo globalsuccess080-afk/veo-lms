@@ -11,6 +11,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { buttonClass } from '../../components/ui/Button'
 import { StudentDashboardSkeleton } from '../../components/skeletons/student/StudentDashboardSkeleton'
 import { LearningStreakCard } from '../../components/student/LearningStreakCard'
+import { resolveAssetUrl } from '../../lib/assets'
 
 interface EnrollmentItem {
   id: string
@@ -145,7 +146,7 @@ export function DashboardPage() {
                     >
                       <div className="absolute top-0 left-0 w-[2px] h-full bg-gradient-to-b from-transparent via-primary to-transparent opacity-50" />
                       <div className="relative w-[110px] h-[74px] rounded-xl overflow-hidden shrink-0">
-                        <img src={item.courseId.thumbnail} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                        <img src={resolveAssetUrl(item.courseId.thumbnail)} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                         <div className="absolute inset-0 bg-black/40 grid place-items-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                           <PlayCircle size={28} className="text-white drop-shadow-lg" />
                         </div>
@@ -203,7 +204,7 @@ export function DashboardPage() {
                     style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
                   >
                     <div className="relative overflow-hidden aspect-[16/9]">
-                      <img src={e.course.thumbnail} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+                      <img src={resolveAssetUrl(e.course.thumbnail)} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-black/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                     </div>
                     

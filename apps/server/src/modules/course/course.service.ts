@@ -8,6 +8,7 @@ import { courseQueue } from './course.queue'
 import { findSection, removeSection } from '../../utils/sections'
 import { buildQuery } from '../../utils/queryBuilder'
 import { storageService } from '../../storage/StorageService'
+import { formatAssetPath } from '../../utils/assetPath'
 
 function slugify(text: string) {
   return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
@@ -20,11 +21,12 @@ function formatCourse(course: ICourse & { createdAt?: Date; updatedAt?: Date }) 
     slug: course.slug,
     description: course.description,
     shortDescription: course.shortDescription,
-    thumbnail: course.thumbnail && !course.thumbnail.startsWith('http') 
-      ? storageService.getPublicUrl(course.thumbnail) 
-      : course.thumbnail,
+    thumbnail: formatAssetPath(course.thumbnail),
     trailerUrl: course.trailerUrl,
-    instructor: course.instructor,
+    instructor: {
+      ...course.instructor,
+      avatar: formatAssetPath(course.instructor?.avatar),
+    },
     price: course.price,
     originalPrice: course.originalPrice,
     category: course.category,

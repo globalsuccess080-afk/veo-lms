@@ -1,4 +1,5 @@
 import { cn } from '../../lib/utils'
+import { resolveAssetUrl } from '../../lib/assets'
 
 export function Avatar({ name, src, size = 36, className }: { name?: string; src?: string | null; size?: number; className?: string }) {
   const initials = (name || '?')
@@ -8,8 +9,10 @@ export function Avatar({ name, src, size = 36, className }: { name?: string; src
     .join('')
     .toUpperCase()
 
-  if (src) {
-    return <img src={src} alt={name} width={size} height={size} className={cn('rounded-full object-cover', className)} style={{ width: size, height: size }} />
+  const imageSrc = resolveAssetUrl(src)
+
+  if (imageSrc) {
+    return <img src={imageSrc} alt={name} width={size} height={size} className={cn('rounded-full object-cover', className)} style={{ width: size, height: size }} />
   }
 
   return (

@@ -4,6 +4,7 @@ import { ApiError } from '../../utils/apiError'
 import { Lesson } from '../lesson/lesson.model'
 import { videoQueue, videoUploadQueue } from '../../config/bullmq'
 import { storageService } from '../../storage/StorageService'
+import { formatAssetPath } from '../../utils/assetPath'
 import fs from 'fs/promises'
 import { randomUUID } from 'crypto'
 import { param } from '../../utils/params'
@@ -73,7 +74,7 @@ export const uploadImage = asyncHandler(async (req, res) => {
 
   await fs.unlink(req.file.path).catch(() => {})
 
-  sendSuccess(res, { url: result.url, key: result.key, fileName: req.file.filename, size: req.file.size }, 'Image uploaded successfully', 201)
+  sendSuccess(res, { path: formatAssetPath(result.key), key: result.key, fileName: req.file.filename, size: req.file.size }, 'Image uploaded successfully', 201)
 })
 
 export const uploadResource = asyncHandler(async (req, res) => {
@@ -84,11 +85,9 @@ export const uploadResource = asyncHandler(async (req, res) => {
 
   await fs.unlink(req.file.path).catch(() => {})
 
-  const url = storageService.getPublicUrl(key)
-
   sendSuccess(
     res,
-    { url, key, fileName: req.file.originalname, size: req.file.size, type: req.file.mimetype },
+    { path: formatAssetPath(key), key, fileName: req.file.originalname, size: req.file.size, type: req.file.mimetype },
     'Resource uploaded successfully',
     201
   )

@@ -4,15 +4,15 @@ import { toast } from 'sonner'
 import { uploadImage } from '../../services/video.service'
 import { Input } from '../ui/Input'
 import { cn } from '../../lib/utils'
+import { resolveAssetUrl } from '../../lib/assets'
 
 interface ImageUploadProps {
-  value: string // the key
-  previewUrl?: string // the full url
-  onChange: (key: string, url?: string) => void
+  value: string
+  onChange: (key: string) => void
   placeholder?: string
 }
 
-export function ImageUpload({ value, previewUrl, onChange, placeholder = 'https://...' }: ImageUploadProps) {
+export function ImageUpload({ value, onChange, placeholder = 'https://...' }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [progress, setProgress] = useState<number | null>(null)
   const [mode, setMode] = useState<'upload' | 'url'>('upload')
@@ -22,7 +22,7 @@ export function ImageUpload({ value, previewUrl, onChange, placeholder = 'https:
     setProgress(0)
     try {
       const result = await uploadImage(file, setProgress)
-      onChange(result.key, result.url)
+      onChange(result.key)
       toast.success('Thumbnail uploaded')
     } catch (e) {
       const err = e as { response?: { data?: { message?: string } } }
@@ -33,6 +33,7 @@ export function ImageUpload({ value, previewUrl, onChange, placeholder = 'https:
   }
 
   const uploading = progress !== null
+  const previewSrc = resolveAssetUrl(value)
 
   return (
     <div className="space-y-2">
@@ -45,12 +46,12 @@ export function ImageUpload({ value, previewUrl, onChange, placeholder = 'https:
         </button>
       </div>
 
-      {value || previewUrl ? (
+      {value ? (
         <div className="relative w-full overflow-hidden rounded-input border border-line">
-          <img src={previewUrl || value} alt="Thumbnail preview" className="w-full h-40 object-cover" />
+          <img src={previewSrc} alt="Thumbnail preview" className="w-full h-40 object-cover" />
           <button
             type="button"
-            onClick={() => onChange('', '')}
+            onClick={() => onChange('')}
             className="absolute top-2 right-2 grid place-items-center w-7 h-7 rounded-full bg-canvas/80 text-fg hover:bg-danger hover:text-white transition-colors"
             aria-label="Remove thumbnail"
           >
@@ -65,7 +66,7 @@ export function ImageUpload({ value, previewUrl, onChange, placeholder = 'https:
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
             onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); e.dataTransfer.files?.[0] && handleFile(e.dataTransfer.files[0]) }}
+            onDrop={(e) => { e.preventDefault(); e.dataTransfer.files?.[0] && handleFile(e.target.files[0]) }}
             className="w-full flex flex-col items-center justify-center gap-1.5 rounded-input border border-dashed border-line-strong py-6 text-center transition-colors hover:border-primary hover:bg-surface2 disabled:opacity-60"
           >
             {uploading ? <Loader2 size={22} className="animate-spin text-primary" /> : <ImagePlus size={22} className="text-muted" />}

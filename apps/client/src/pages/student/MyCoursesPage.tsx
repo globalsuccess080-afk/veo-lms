@@ -12,6 +12,7 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { MyCoursesSkeleton } from '../../components/skeletons/student/MyCoursesSkeleton'
 import { buttonClass } from '../../components/ui/Button'
 import { cn } from '../../lib/utils'
+import { resolveAssetUrl } from '../../lib/assets'
 
 interface EnrollmentItem {
   id: string
@@ -85,7 +86,7 @@ export function MyCoursesPage() {
                   <Link to={`/learn/${e.course.slug}`} className="block h-full">
                     <Card interactive className="overflow-hidden h-full group border-line/80 bg-surface/50 hover:bg-surface flex flex-col">
                       <div className="relative overflow-hidden shrink-0">
-                        <img src={e.course.thumbnail} alt="" className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500" />
+                        <img src={resolveAssetUrl(e.course.thumbnail)} alt="" className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500" />
                         <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
                         {e.progress === 100 && (
                           <Badge tone="success" className="absolute top-3 right-3 shadow-md backdrop-blur-md bg-success/90">Completed</Badge>

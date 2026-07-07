@@ -1,5 +1,6 @@
 import { Discussion } from './discussion.model'
 import { ApiError } from '../../utils/apiError'
+import { formatAssetPath } from '../../utils/assetPath'
 
 interface PopulatedUser {
   _id: { toString(): string }
@@ -22,7 +23,7 @@ export async function listByLesson(lessonId: string) {
     author: {
       id: d.userId?._id?.toString() || '',
       name: d.userId?.name || 'User',
-      avatar: d.userId?.avatar || null,
+      avatar: d.userId?.avatar ? formatAssetPath(d.userId.avatar) : null,
       role: d.userId?.role || 'student'
     }
   }))
@@ -45,7 +46,7 @@ export async function createMessage(
     author: {
       id: populated!.userId?._id?.toString() || '',
       name: populated!.userId?.name || 'User',
-      avatar: populated!.userId?.avatar || null,
+      avatar: populated!.userId?.avatar ? formatAssetPath(populated!.userId.avatar) : null,
       role: populated!.userId?.role || 'student'
     }
   }

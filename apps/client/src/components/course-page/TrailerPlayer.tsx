@@ -3,6 +3,7 @@ import { Play, Volume2, VolumeX, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import { parseYouTubeId, cn } from '../../lib/utils'
+import { resolveAssetUrl } from '../../lib/assets'
 
 const SPEEDS = [1, 1.5, 2] as const
 
@@ -48,9 +49,9 @@ function loadYouTubeAPI() {
 
 function resolvePoster(thumbnail: string, videoId: string | null) {
   const isEmbed = thumbnail.includes('youtube.com/embed') || thumbnail.includes('youtu.be')
-  if (thumbnail && !isEmbed) return thumbnail
+  if (thumbnail && !isEmbed) return resolveAssetUrl(thumbnail)
   if (videoId) return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
-  return thumbnail
+  return resolveAssetUrl(thumbnail)
 }
 
 interface TrailerPlayerProps {

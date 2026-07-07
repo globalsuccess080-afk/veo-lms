@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs'
 import { User } from './user.model'
 import { ApiError } from '../../utils/apiError'
 import { storageService } from '../../storage/StorageService'
+import { formatAssetPath } from '../../utils/assetPath'
 
 export async function updateProfile(userId: string, name: string, avatar?: string | null) {
   const user = await User.findById(userId)
@@ -19,7 +20,7 @@ export async function updateProfile(userId: string, name: string, avatar?: strin
     name: user.name,
     email: user.getDecryptedEmail(),
     role: user.role,
-    avatar: user.avatar && !user.avatar.startsWith('http') ? storageService.getPublicUrl(user.avatar) : user.avatar,
+    avatar: user.avatar ? formatAssetPath(user.avatar) : user.avatar,
     isActive: user.isActive,
     createdAt: user.createdAt.toISOString()
   }

@@ -10,6 +10,7 @@ import { getCourseProgress, updateProgress, getLessonProgress } from '../../serv
 import { VideoPlayer, type VideoPlayerHandle } from '../../components/player/VideoPlayer'
 import { LessonTabs } from '../../components/learn/LessonTabs'
 import { formatDuration, cn } from '../../lib/utils'
+import { resolveAssetUrl } from '../../lib/assets'
 import { Button, buttonClass } from '../../components/ui/Button'
 import { Progress } from '../../components/ui/Progress'
 import { Skeleton } from '../../components/ui/Skeleton'
@@ -198,7 +199,7 @@ export function LearnPage() {
                                             youtubeUrl={video.youtubeUrl}
                                             fileUrl={video.fileUrl}
                                             durationHint={lesson.duration}
-                                            poster={video.thumbnailUrl || video.thumbnail?.medium || video.thumbnail?.large || video.thumbnail?.small || undefined}
+                                            poster={resolveAssetUrl(video.thumbnailUrl || video.thumbnail?.medium || video.thumbnail?.large || video.thumbnail?.small) || undefined}
                                             // If lesson is completed, always start from beginning
                                             savedPosition={isDone(currentLessonId) ? 0 : (savedProgress?.watchedSeconds || 0)}
                                             onProgress={handleProgress}

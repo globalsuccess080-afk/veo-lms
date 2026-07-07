@@ -6,6 +6,7 @@ import { ApiError } from '../../utils/apiError'
 import { generateAccessToken, generateRefreshToken } from '../../utils/generateToken'
 import { redis } from '../../config/redis'
 import { User as UserType } from '@veolms/shared'
+import { formatAssetPath } from '../../utils/assetPath'
 
 function formatUser(user: InstanceType<typeof User>): UserType {
   return {
@@ -13,7 +14,7 @@ function formatUser(user: InstanceType<typeof User>): UserType {
     name: user.getDecryptedName(),
     email: user.getDecryptedEmail(),
     role: user.role,
-    avatar: user.avatar,
+    avatar: user.avatar ? formatAssetPath(user.avatar) : user.avatar,
     isActive: user.isActive,
     createdAt: user.createdAt.toISOString()
   }

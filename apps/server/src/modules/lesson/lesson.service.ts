@@ -9,6 +9,7 @@ import { Types } from 'mongoose'
 import { videoQueue, videoUploadQueue } from '../../config/bullmq'
 import { createVideoToken } from '../video/video.delivery'
 import { env } from '../../config/env'
+import { formatAssetPath } from '../../utils/assetPath'
 
 function formatLesson(lesson: ILesson) {
   const video = lesson.video ? { ...lesson.video } : ({} as any)
@@ -39,7 +40,10 @@ function formatLesson(lesson: ILesson) {
     duration,
     isPreview: lesson.isPreview,
     video,
-    resources: lesson.resources,
+    resources: (lesson.resources || []).map((r) => ({
+      ...r,
+      url: formatAssetPath(r.url),
+    })),
     createdAt: lesson.createdAt.toISOString(),
     updatedAt: lesson.updatedAt.toISOString()
   }
@@ -171,9 +175,9 @@ export async function getVideoUrl(id: string, userId: string, userRole?: string)
   }) : ''
 
   const thumbnail = {
-    small: lesson.video.thumbnail?.small || '',
-    medium: lesson.video.thumbnail?.medium || '',
-    large: lesson.video.thumbnail?.large || '',
+    small: formatAssetPath(lesson.video.thumbnail?.small || ''),
+    medium: formatAssetPath(lesson.video.thumbnail?.medium || ''),
+    large: formatAssetPath(lesson.video.thumbnail?.large || ''),
   }
 
   return {

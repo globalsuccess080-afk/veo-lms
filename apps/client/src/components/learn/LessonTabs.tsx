@@ -13,6 +13,7 @@ import { Badge } from '../ui/Badge'
 import { EmptyState } from '../ui/EmptyState'
 import { Modal } from '../ui/Modal'
 import { cn } from '../../lib/utils'
+import { resolveAssetUrl } from '../../lib/assets'
 
 const SHORTCUTS: { keys: string[]; action: string }[] = [
   { keys: ['Space', 'K'], action: 'Play / Pause' },
@@ -406,17 +407,18 @@ function ResourcesTab({ resources }: { resources: LessonResource[] }) {
     return <EmptyState icon={Paperclip} title="No resources" description="The instructor hasn't attached any downloadable resources to this lecture." />
   }
 
-  const handleDownload = async (e: React.MouseEvent<HTMLAnchorElement>, url: string, filename: string) => {
+  const handleDownload = async (e: React.MouseEvent<HTMLAnchorElement>, path: string, filename: string) => {
     e.preventDefault()
-    if (downloading[url]) return // prevent multiple clicks
+    const url = resolveAssetUrl(path)
+    if (downloading[path]) return
     try {
-      setDownloading(prev => ({ ...prev, [url]: 1 }))
+      setDownloading(prev => ({ ...prev, [path]: 1 }))
       const response = await axios.get(url, {
         responseType: 'blob',
         onDownloadProgress: (progressEvent) => {
           if (progressEvent.total) {
             const pct = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-            setDownloading(prev => ({ ...prev, [url]: pct }))
+            setDownloading(prev => ({ ...prev, [path]: pct }))
           }
         }
       })
@@ -434,7 +436,7 @@ function ResourcesTab({ resources }: { resources: LessonResource[] }) {
     } finally {
       setDownloading(prev => {
         const next = { ...prev }
-        delete next[url]
+        delete next[path]
         return next
       })
     }
@@ -444,11 +446,12 @@ function ResourcesTab({ resources }: { resources: LessonResource[] }) {
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
       {resources.map((r, i) => {
         const Icon = resourceIcon(r.type, r.url)
+        const assetUrl = resolveAssetUrl(r.url)
         const pct = downloading[r.url]
         return (
           <a
             key={i}
-            href={r.url}
+            href={assetUrl}
             onClick={(e) => handleDownload(e, r.url, r.title)}
             className="flex items-center gap-3 rounded-input border border-line p-3 bg-surface hover:border-primary hover:bg-surface2/50 transition-colors group relative overflow-hidden"
           >

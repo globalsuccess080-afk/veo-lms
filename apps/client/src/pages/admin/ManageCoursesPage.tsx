@@ -18,6 +18,7 @@ import { Badge } from '../../components/ui/Badge'
 import { Card } from '../../components/ui/Card'
 import { buttonClass } from '../../components/ui/Button'
 import { formatINR } from '../../lib/utils'
+import { resolveAssetUrl } from '../../lib/assets'
 import { Course } from '@veolms/shared'
 
 import { useTableState } from '../../components/admin/table/useTableState'
@@ -190,7 +191,7 @@ export function ManageCoursesPage() {
         return (
           <div className="flex items-center gap-4">
             <div className="relative w-16 h-10 rounded-md overflow-hidden bg-surface2 border border-line shrink-0 shadow-sm">
-              <img src={course.thumbnail} alt="" className="w-full h-full object-cover" />
+              <img src={resolveAssetUrl(course.thumbnail)} alt="" className="w-full h-full object-cover" />
             </div>
             <span className="font-bold text-[14px] text-fg line-clamp-1">{course.title}</span>
           </div>

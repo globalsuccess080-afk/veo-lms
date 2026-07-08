@@ -2,12 +2,20 @@ import nodemailer from 'nodemailer'
 import { env } from '../../config/env'
 import { logger } from '../../utils/logger'
 
+const smtpPort = env.SMTP_PORT || 587
+const smtpHost = env.SMTP_HOST || 'smtp.gmail.com'
+
 const transporter = (env.SMTP_USER && env.SMTP_PASS) ? nodemailer.createTransport({
-  service: 'gmail',
+  host: smtpHost,
+  port: smtpPort,
+  secure: smtpPort === 465,
   auth: {
     user: env.SMTP_USER,
     pass: env.SMTP_PASS
-  }
+  },
+  connectionTimeout: 30000,
+  greetingTimeout: 30000,
+  socketTimeout: 30000,
 }) : null
 
 export interface SendEmailOptions {
@@ -22,6 +30,9 @@ export async function sendEmail(options: SendEmailOptions) {
     to: options.to,
     subject: options.subject,
     smtpConfigured: Boolean(transporter && env.SMTP_USER && env.SMTP_PASS),
+    smtpHost,
+    smtpPort,
+    smtpSecure: smtpPort === 465,
     smtpUser: env.SMTP_USER || null,
   })
 
@@ -29,6 +40,8 @@ export async function sendEmail(options: SendEmailOptions) {
     logger.warn('Email not sent because SMTP is not configured', {
       to: options.to,
       subject: options.subject,
+      smtpHost,
+      smtpPort,
       smtpUserPresent: Boolean(env.SMTP_USER),
       smtpPassPresent: Boolean(env.SMTP_PASS),
     })
@@ -37,7 +50,7 @@ export async function sendEmail(options: SendEmailOptions) {
 
   try {
     const info = await transporter.sendMail({
-      from: `"VeoLMS" <${env.SMTP_USER}>`,
+      from: env.SMTP_FROM || `"VeoLMS" <${env.SMTP_USER}>`,
       ...options
     })
     logger.info('Email sent successfully', {

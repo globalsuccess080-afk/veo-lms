@@ -39,11 +39,13 @@ export async function sendOtp(name: string, email: string) {
     subject: 'Verify your VeoLMS Account',
     html: generateOtpEmail(name, otp)
   })
+  const emailQueueCounts = await emailQueue.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed')
 
   logger.info('OTP email job queued', {
     email,
     jobId: job.id,
     queueName: job.queueName,
+    queueCounts: emailQueueCounts,
   })
 
   return { message: 'OTP sent to email' }

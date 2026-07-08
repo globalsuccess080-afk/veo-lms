@@ -18,8 +18,20 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(options: SendEmailOptions) {
+  logger.info('sendEmail invoked', {
+    to: options.to,
+    subject: options.subject,
+    smtpConfigured: Boolean(transporter && env.SMTP_USER && env.SMTP_PASS),
+    smtpUser: env.SMTP_USER || null,
+  })
+
   if (!transporter || !env.SMTP_USER) {
-    logger.warn(`Email not sent (SMTP_USER or SMTP_PASS missing): ${options.subject} to ${options.to}`)
+    logger.warn('Email not sent because SMTP is not configured', {
+      to: options.to,
+      subject: options.subject,
+      smtpUserPresent: Boolean(env.SMTP_USER),
+      smtpPassPresent: Boolean(env.SMTP_PASS),
+    })
     return null
   }
 
@@ -28,10 +40,21 @@ export async function sendEmail(options: SendEmailOptions) {
       from: `"VeoLMS" <${env.SMTP_USER}>`,
       ...options
     })
-    logger.info(`Email sent: ${info.messageId}`)
+    logger.info('Email sent successfully', {
+      to: options.to,
+      subject: options.subject,
+      messageId: info.messageId,
+      response: info.response,
+    })
     return info
   } catch (error) {
-    logger.error('Error sending email:', error)
+    const err = error as Error
+    logger.error('Error sending email', {
+      to: options.to,
+      subject: options.subject,
+      error: err.message,
+      stack: err.stack,
+    })
     throw error
   }
 }

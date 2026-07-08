@@ -34,6 +34,10 @@ import certificateRouter from './modules/certificate/certificate.router'
 
 const app = express()
 
+// Production runs behind a single reverse proxy/load balancer, so trust one hop
+// for correct client IP detection in express-rate-limit and secure cookies.
+app.set('trust proxy', env.NODE_ENV === 'production' ? 1 : false)
+
 function getHealthStatus() {
   return {
     server: true,

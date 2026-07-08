@@ -7,6 +7,7 @@ import { generateAccessToken, generateRefreshToken } from '../../utils/generateT
 import { redis } from '../../config/redis'
 import { User as UserType } from '@veolms/shared'
 import { formatAssetPath } from '../../utils/assetPath'
+import { logger } from '../../utils/logger'
 
 function formatUser(user: InstanceType<typeof User>): UserType {
   return {
@@ -21,19 +22,28 @@ function formatUser(user: InstanceType<typeof User>): UserType {
 }
 
 export async function sendOtp(name: string, email: string) {
+  logger.info('OTP requested', { email, name })
+
   const existing = await User.findOne({ emailHash: hashEmail(email) })
   if (existing) throw new ApiError(409, 'Email already registered')
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString()
   await redis.set(`otp:${email}`, otp, 'EX', 10 * 60)
+  logger.info('OTP stored in redis', { email, key: `otp:${email}`, expiresInSeconds: 600 })
 
   const { emailQueue } = await import('../email/email.queue')
   const { generateOtpEmail } = await import('../email/templates')
   
-  await emailQueue.add('sendEmail', {
+  const job = await emailQueue.add('sendEmail', {
     to: email,
     subject: 'Verify your VeoLMS Account',
     html: generateOtpEmail(name, otp)
+  })
+
+  logger.info('OTP email job queued', {
+    email,
+    jobId: job.id,
+    queueName: job.queueName,
   })
 
   return { message: 'OTP sent to email' }
@@ -155,19 +165,28 @@ export async function getMe(userId: string) {
 }
 
 export async function forgotPassword(email: string) {
+  logger.info('Password reset OTP requested', { email })
+
   const user = await User.findOne({ emailHash: hashEmail(email) })
   if (!user) throw new ApiError(404, 'User not found')
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString()
   await redis.set(`reset_otp:${email}`, otp, 'EX', 10 * 60)
+  logger.info('Password reset OTP stored in redis', { email, key: `reset_otp:${email}`, expiresInSeconds: 600 })
 
   const { emailQueue } = await import('../email/email.queue')
   const { generatePasswordResetEmail } = await import('../email/templates')
   
-  await emailQueue.add('sendEmail', {
+  const job = await emailQueue.add('sendEmail', {
     to: email,
     subject: 'Reset Your VeoLMS Password',
     html: generatePasswordResetEmail(user.getDecryptedName(), otp)
+  })
+
+  logger.info('Password reset email job queued', {
+    email,
+    jobId: job.id,
+    queueName: job.queueName,
   })
 
   return { message: 'Password reset OTP sent to email' }

@@ -12,6 +12,8 @@ import { globalEncryptionMiddleware } from './crypto/encryption.middleware'
 import encryptionRouter from './modules/encryption/encryption.router'
 import swaggerUi from 'swagger-ui-express'
 import { swaggerSpec, swaggerUiOptions } from './config/swagger'
+import mongoose from 'mongoose'
+import { redis } from './config/redis'
 
 import authRouter from './modules/auth/auth.router'
 import userRouter from './modules/user/user.router'
@@ -30,6 +32,14 @@ import streakRouter from './modules/streak/streak.router'
 import certificateRouter from './modules/certificate/certificate.router'
 
 const app = express()
+
+function getHealthStatus() {
+  return {
+    server: true,
+    mongoDB: mongoose.connection.readyState === 1,
+    redis: redis.status === 'ready',
+  }
+}
 
 const connectSrc = [
   "'self'",
@@ -102,8 +112,12 @@ app.get('/api/docs.json', (req, res) => {
 })
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions))
 
+app.get('/health', (_req, res) => {
+  res.json(getHealthStatus())
+})
+
 app.get('/api/health', (_req, res) => {
-  res.json({ success: true, message: 'VeoLMS API is running' })
+  res.json(getHealthStatus())
 })
 
 app.use('/api/encryption', encryptionRouter)

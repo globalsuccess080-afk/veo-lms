@@ -14,6 +14,7 @@ import swaggerUi from 'swagger-ui-express'
 import { swaggerSpec, swaggerUiOptions } from './config/swagger'
 import mongoose from 'mongoose'
 import { redis } from './config/redis'
+import { allowedFrontendOrigins, isAllowedFrontendOrigin, primaryFrontendOrigin } from './config/security'
 
 import authRouter from './modules/auth/auth.router'
 import userRouter from './modules/user/user.router'
@@ -43,7 +44,7 @@ function getHealthStatus() {
 
 const connectSrc = [
   "'self'",
-  env.FRONTEND_URL,
+  ...allowedFrontendOrigins,
   "https://api.razorpay.com",
   env.R2_PUBLIC_URL,
 ]
@@ -79,14 +80,16 @@ app.use(helmet({
 }))
 
 const allowedOrigins = env.NODE_ENV === 'production' 
-  ? [env.FRONTEND_URL] 
-  : ['http://localhost:5173', 'http://127.0.0.1:5173', env.FRONTEND_URL]
+  ? allowedFrontendOrigins
+  : ['http://localhost:5173', 'http://127.0.0.1:5173', primaryFrontendOrigin]
 
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (env.NODE_ENV === 'production' && isAllowedFrontendOrigin(origin)) {
       callback(null, true)
-    } else if (env.NODE_ENV === 'development' && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
+    } else if (env.NODE_ENV !== 'production' && (!origin || allowedOrigins.includes(origin))) {
+      callback(null, true)
+    } else if (env.NODE_ENV === 'development' && origin && (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:'))) {
       callback(null, true)
     } else {
       console.error(`Blocked by CORS. Origin: ${origin}`);

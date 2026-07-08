@@ -1,11 +1,11 @@
 import { Server as HttpServer } from 'http'
 import { Server } from 'socket.io'
 import { verifyAccessToken } from '../utils/generateToken'
-import { env } from './env'
+import { allowedFrontendOrigins } from './security'
 
 export function setupSocket(httpServer: HttpServer) {
   const io = new Server(httpServer, {
-    cors: { origin: env.FRONTEND_URL, credentials: true }
+    cors: { origin: allowedFrontendOrigins, credentials: true }
   })
 
   io.use((socket, next) => {

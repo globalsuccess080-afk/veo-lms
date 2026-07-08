@@ -15,6 +15,7 @@ jobs:
         with:
           ref: prod
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Verify PROD_PAT
         env:
@@ -34,6 +35,9 @@ jobs:
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
+
+          # Remove any leftover auth header from checkout, just in case
+          git config --global --unset-all http.https://github.com/.extraheader || true
 
           git remote add production https://x-access-token:${PROD_PAT}@github.com/globalsuccess080-afk/veo-lms.git
 

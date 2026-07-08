@@ -1,7 +1,7 @@
 import { Job, Worker } from 'bullmq'
 import { redis } from '../../../config/redis'
 import { Lesson } from '../../lesson/lesson.model'
-import { storageService } from '../../../storage/StorageService'
+import { storageService } from '../../../storage/storageService'
 import { CleanupService } from '../services/CleanupService'
 import { ProgressService } from '../services/ProgressService'
 import { UploadJobData } from '../video.types'
@@ -23,7 +23,7 @@ async function processUpload(job: Job<UploadJobData>) {
     completedQualities: data.qualities,
   })
 
-  await storageService.uploadDirectory(data.outputDir, destination, (uploaded, total) => {
+  await storageService.uploadDirectory(data.outputDir, destination, (uploaded: number, total: number) => {
     const percent = 70 + uploaded / Math.max(total, 1) * 25
     void progress.report('UPLOADING_STORAGE', percent, `Uploading ${uploaded} of ${total} files`, {
       completedQualities: data.qualities,

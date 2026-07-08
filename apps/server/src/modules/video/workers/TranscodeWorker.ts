@@ -8,7 +8,7 @@ import { MetadataService } from '../services/MetadataService';
 import { ThumbnailService } from '../services/ThumbnailService';
 import { TranscodeService, QUALITY_PRESETS } from '../services/TranscodeService';
 import { CleanupService } from '../services/CleanupService';
-import { storageService } from '../../../storage/StorageService';
+import { storageService } from '../../../storage/storageService';
 import { emitVideoProgress, emitVideoComplete, emitVideoFailed } from '../../../utils/videoSocket';
 
 /**

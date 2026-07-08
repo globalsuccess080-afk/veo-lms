@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
 import { User } from './user.model'
 import { ApiError } from '../../utils/apiError'
-import { storageService } from '../../storage/StorageService'
+import { storageService } from '../../storage/storageService'
 import { formatAssetPath } from '../../utils/assetPath'
 
 export async function updateProfile(userId: string, name: string, avatar?: string | null) {

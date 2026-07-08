@@ -43,9 +43,11 @@ async function getHealthStatus() {
 
   return {
     server: true,
+    serviceRole: process.env.SERVICE_ROLE || 'server',
     mongoDB: mongoose.connection.readyState === 1,
     redis: redis.status === 'ready',
     worker: Boolean(workerHeartbeat),
+    workerHeartbeatKey: 'health:worker:main',
     workerHeartbeat,
   }
 }

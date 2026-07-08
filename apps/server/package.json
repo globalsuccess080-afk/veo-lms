@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "start:worker": "node dist/worker.js",
+    "start:railway": "node dist/startRailway.js",
     "seed": "tsx src/scripts/seed.ts",
     "repair:video-durations": "tsx src/scripts/repairVideoDurations.ts",
     "test": "vitest",

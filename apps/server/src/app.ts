@@ -38,11 +38,15 @@ const app = express()
 // for correct client IP detection in express-rate-limit and secure cookies.
 app.set('trust proxy', env.NODE_ENV === 'production' ? 1 : false)
 
-function getHealthStatus() {
+async function getHealthStatus() {
+  const workerHeartbeat = await redis.get('health:worker:main')
+
   return {
     server: true,
     mongoDB: mongoose.connection.readyState === 1,
     redis: redis.status === 'ready',
+    worker: Boolean(workerHeartbeat),
+    workerHeartbeat,
   }
 }
 
@@ -119,12 +123,12 @@ app.get('/api/docs.json', (req, res) => {
 })
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerUiOptions))
 
-app.get('/health', (_req, res) => {
-  res.json(getHealthStatus())
+app.get('/health', async (_req, res) => {
+  res.json(await getHealthStatus())
 })
 
-app.get('/api/health', (_req, res) => {
-  res.json(getHealthStatus())
+app.get('/api/health', async (_req, res) => {
+  res.json(await getHealthStatus())
 })
 
 app.use('/api/encryption', encryptionRouter)

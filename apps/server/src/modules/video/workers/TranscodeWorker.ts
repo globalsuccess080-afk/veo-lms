@@ -8,7 +8,7 @@ import { MetadataService } from '../services/MetadataService';
 import { ThumbnailService } from '../services/ThumbnailService';
 import { TranscodeService, QUALITY_PRESETS } from '../services/TranscodeService';
 import { CleanupService } from '../services/CleanupService';
-import { storageService } from '../../../storage/storageService';
+import { storageService } from '../../../storage/StorageService';
 import { emitVideoProgress, emitVideoComplete, emitVideoFailed } from '../../../utils/videoSocket';
 
 /**
@@ -272,4 +272,3 @@ export const transcodeWorker = new Worker('video-transcode', async (job: Job) =>
 transcodeWorker.on('failed', (job, err) => {
   console.error(`[TranscodeWorker] Job ${job?.id} failed (attempt ${job?.attemptsMade}):`, err.message);
 });
-

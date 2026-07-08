@@ -3,7 +3,7 @@ import jwt, { JwtPayload } from 'jsonwebtoken'
 import { env } from '../../config/env'
 import { cache } from '../../utils/cache'
 import { ApiError } from '../../utils/apiError'
-import { storageService } from '../../storage/storageService'
+import { storageService } from '../../storage/StorageService'
 
 interface VideoTokenData {
   userId: string

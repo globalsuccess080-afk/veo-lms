@@ -1,7 +1,7 @@
 import { Job, Worker } from 'bullmq'
 import { redis } from '../../../config/redis'
 import { Lesson } from '../../lesson/lesson.model'
-import { storageService } from '../../../storage/storageService'
+import { storageService } from '../../../storage/StorageService'
 import { CleanupService } from '../services/CleanupService'
 import { ProgressService } from '../services/ProgressService'
 import { UploadJobData } from '../video.types'

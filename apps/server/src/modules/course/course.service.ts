@@ -7,7 +7,7 @@ import { Types } from 'mongoose'
 import { courseQueue } from './course.queue'
 import { findSection, removeSection } from '../../utils/sections'
 import { buildQuery } from '../../utils/queryBuilder'
-import { storageService } from '../../storage/storageService'
+import { storageService } from '../../storage/StorageService'
 import { formatAssetPath } from '../../utils/assetPath'
 
 function slugify(text: string) {

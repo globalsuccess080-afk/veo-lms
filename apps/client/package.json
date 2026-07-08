@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:vercel:client": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest",
     "test:watch": "vitest --watch"

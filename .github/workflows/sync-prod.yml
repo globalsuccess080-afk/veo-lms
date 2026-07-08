@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - prod
+    paths:
+      - 'apps/server/**'
+      - 'packages/shared/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'Dockerfile'
+      - '.github/workflows/sync-prod.yml'
 
 jobs:
   sync:

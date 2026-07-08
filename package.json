@@ -10,6 +10,7 @@
     "dev:server": "npm run dev -w @veolms/server",
     "dev:client": "npm run dev -w @veolms/client",
     "build": "npm run build -w @veolms/shared && npm run build -w @veolms/server && npm run build -w @veolms/client",
+    "build:vercel:client": "npm run build -w @veolms/shared && npm run build -w @veolms/client && node -e \"const fs=require('fs'); const path=require('path'); const src=path.resolve('apps/client/dist'); const dest=path.resolve('dist'); fs.rmSync(dest,{recursive:true,force:true}); fs.cpSync(src,dest,{recursive:true});\"",
     "start": "npm run start -w @veolms/server",
     "seed": "npm run seed -w @veolms/server",
     "test": "npm run test --workspaces --if-present",

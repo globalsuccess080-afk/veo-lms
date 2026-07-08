@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 import { BookOpen, CheckCircle2, TrendingUp, Clock, ArrowRight, PlayCircle, Sparkles } from 'lucide-react'
 import { getMyEnrollments } from '../../services/enrollment.service'
 import { getRecentProgress } from '../../services/progress.service'
@@ -26,17 +26,17 @@ interface RecentItem {
   isCompleted: boolean
 }
 
-const FADE_DOWN = {
+const FADE_DOWN: Variants = {
   hidden: { opacity: 0, y: -20 },
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }
 
-const STAGGER_CONTAINER = {
+const STAGGER_CONTAINER: Variants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 }
 
-const ITEM_VAR = {
+const ITEM_VAR: Variants = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }

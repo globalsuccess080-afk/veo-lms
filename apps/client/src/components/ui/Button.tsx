@@ -35,18 +35,20 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant
   size?: Size
   loading?: boolean
+  isLoading?: boolean
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ variant = 'primary', size = 'md', loading, className, children, disabled, ...props }, ref) => {
+  ({ variant = 'primary', size = 'md', loading, isLoading, className, children, disabled, ...props }, ref) => {
+    const busy = loading || isLoading
     return (
       <button
         ref={ref}
         className={buttonClass(variant, size, className)}
-        disabled={disabled || loading}
+        disabled={disabled || busy}
         {...props}
       >
-        {loading && <Loader2 size={16} className="animate-spin" />}
+        {busy && <Loader2 size={16} className="animate-spin" />}
         {children}
       </button>
     )

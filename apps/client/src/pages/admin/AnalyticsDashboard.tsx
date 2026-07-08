@@ -15,7 +15,7 @@ import {
   SortingState,
   ColumnDef,
 } from '@tanstack/react-table'
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 
 import { getDashboardAnalytics } from '../../services/analytics.service'
 import { getAdminStreakLeaderboard } from '../../services/streak.service'
@@ -32,12 +32,12 @@ import { handleExportData } from '../../utils/exportUtils'
 
 const COLORS = ['var(--primary)', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
-const containerVars = {
+const containerVars: Variants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 }
 
-const itemVars = {
+const itemVars: Variants = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }

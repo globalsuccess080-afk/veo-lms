@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronRight, Youtube, Upload, UploadCloud, GripVertical, Clock, Eye, Pencil, Paperclip, FileText, Loader2, Save, BookOpen, Layers } from 'lucide-react'
 import { getAdminCourse, createCourse, updateCourse, addSection, updateSection, deleteSection, reorderSections, getCategories } from '../../services/course.service'
 import { getLessons, createLesson, updateLesson, deleteLesson } from '../../services/lesson.service'
@@ -31,12 +31,12 @@ const LEVEL_OPTIONS = [
 type VideoSource = 'youtube' | 'upload'
 const emptyLesson = { title: '', description: '', source: 'upload' as VideoSource, youtubeUrl: '', fileUrl: '', duration: 0, isPreview: false, pendingFile: null as File | null }
 
-const containerVars = {
+const containerVars: Variants = {
     hidden: { opacity: 0 },
     show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 }
 
-const itemVars = {
+const itemVars: Variants = {
     hidden: { opacity: 0, y: 15 },
     show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }
@@ -299,6 +299,7 @@ export function CourseEditorPage() {
             if (lessonForm.source === 'upload' && lessonForm.pendingFile) {
                 toast.info('Lecture created, starting video upload...')
                 await uploadVideo(lessonForm.pendingFile, createdLesson.id)
+                if (!course) throw new Error('Course context missing for upload job')
                 useProcessingStore.getState().addJob({
                     lessonId: createdLesson.id,
                     courseId: course.id,
@@ -444,8 +445,8 @@ export function CourseEditorPage() {
                                                 animate={{ opacity: 1, y: 0 }}
                                                 className={cn("border rounded-2xl overflow-hidden bg-canvas shadow-sm transition-all duration-200", dragOverSectionId === section._id && draggedSectionId !== section._id ? 'border-primary ring-2 ring-primary/20 scale-[1.01]' : 'border-line')}
                                                 draggable
-                                                onDragStart={(e: React.DragEvent) => handleDragStart(e, section._id)}
-                                                onDragEnd={handleDragEnd}
+                                                onDragStartCapture={(e: React.DragEvent) => handleDragStart(e, section._id)}
+                                                onDragEndCapture={handleDragEnd}
                                                 onDragOver={(e: React.DragEvent) => handleDragOver(e, section._id)}
                                                 onDrop={(e: React.DragEvent) => handleDrop(e, section._id)}
                                             >

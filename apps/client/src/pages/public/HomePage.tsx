@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 import {
   ArrowRight,
   Search,
@@ -33,12 +33,12 @@ import {
 import { buttonClass } from "../../components/ui/Button";
 import HeroSection from "./home/HeroSection";
 
-const containerVars = {
+const containerVars: Variants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const itemVars = {
+const itemVars: Variants = {
   hidden: { opacity: 0, y: 20 },
   show: {
     opacity: 1,

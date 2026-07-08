@@ -12,6 +12,7 @@ export interface DropdownProps {
     value: string | undefined
     onChange: (value: string) => void
     options: DropdownOption[]
+    icon?: React.ReactNode
     placeholder?: string
     className?: string
     error?: string
@@ -24,6 +25,7 @@ export function Dropdown({
     value,
     onChange,
     options,
+    icon,
     placeholder = 'Select...',
     className,
     error,
@@ -86,6 +88,7 @@ export function Dropdown({
                     {selected ? selected.label : placeholder}
                 </span>
 
+                {icon}
                 <ChevronDown
                     size={size === 'sm' ? 14 : 16}
                     className={cn('text-muted shrink-0 transition-transform', open && 'rotate-180')}

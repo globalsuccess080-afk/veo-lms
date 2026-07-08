@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { BookOpen, Users, GraduationCap, IndianRupee, Plus, Megaphone, ArrowRight } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import { getStats } from '../../services/admin.service'
 import { formatINR } from '../../lib/utils'
 import { AdminPage, Table } from '../../components/admin/AdminPage'
@@ -10,12 +10,12 @@ import { Card } from '../../components/ui/Card'
 import { Badge } from '../../components/ui/Badge'
 import { AdminDashboardSkeleton } from '../../components/skeletons/admin/AdminDashboardSkeleton'
 
-const containerVars = {
+const containerVars: Variants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 }
 
-const itemVars = {
+const itemVars: Variants = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }

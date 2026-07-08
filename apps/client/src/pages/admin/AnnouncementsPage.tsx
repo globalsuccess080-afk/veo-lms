@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Megaphone, Send, Bell, Copy, Trash2, Calendar, LayoutList, Mail, Plus, Bold, Italic, Link2, List } from 'lucide-react'
-import { AnimatePresence, motion } from 'framer-motion'
+import { AnimatePresence, motion, type Variants } from 'framer-motion'
 import { ColumnDef } from '@tanstack/react-table'
 
 import { createAnnouncement, getAnnouncements, deleteAnnouncement, duplicateAnnouncement } from '../../services/admin.service'
@@ -28,12 +28,12 @@ import { TableFilters } from '../../components/admin/table/TableFilters'
 import { AnnouncementsSkeleton } from '../../components/skeletons/admin/AnnouncementsSkeleton'
 import { useAlertStore } from '../../store/alertStore'
 
-const containerVars = {
+const containerVars: Variants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 }
 
-const itemVars = {
+const itemVars: Variants = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }

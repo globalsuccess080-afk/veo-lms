@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, Eye, EyeOff } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 import { ColumnDef } from '@tanstack/react-table'
 
 import { getAdminCoupons, createCoupon, updateCouponStatus, deleteCoupon, Coupon } from '../../services/coupon.service'
@@ -25,12 +25,12 @@ import { TableFilters } from '../../components/admin/table/TableFilters'
 import { CouponsSkeleton } from '../../components/skeletons/admin/CouponsSkeleton'
 import { useAlertStore } from '../../store/alertStore'
 
-const containerVars = {
+const containerVars: Variants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 }
 
-const itemVars = {
+const itemVars: Variants = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }

@@ -1,6 +1,7 @@
 import api from '../lib/api'
 
 export interface Coupon {
+  id?: string
   _id: string
   code: string
   description: string

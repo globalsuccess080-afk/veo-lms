@@ -110,9 +110,13 @@ export interface Notification {
   userId: string | null
   targetRole: Role | null
   type: string
+  priority?: 'Low' | 'Normal' | 'High' | 'Urgent'
   title: string
   message: string
   link: string | null
+  targetUrl?: string | null
+  actionLabel?: string | null
+  actionUrl?: string | null
   isRead: boolean
   createdAt: string
 }

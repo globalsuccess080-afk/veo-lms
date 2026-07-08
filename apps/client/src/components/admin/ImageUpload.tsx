@@ -66,7 +66,7 @@ export function ImageUpload({ value, onChange, placeholder = 'https://...' }: Im
             onClick={() => inputRef.current?.click()}
             disabled={uploading}
             onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => { e.preventDefault(); e.dataTransfer.files?.[0] && handleFile(e.target.files[0]) }}
+            onDrop={(e) => { e.preventDefault(); e.dataTransfer.files?.[0] && handleFile(e.dataTransfer.files[0]) }}
             className="w-full flex flex-col items-center justify-center gap-1.5 rounded-input border border-dashed border-line-strong py-6 text-center transition-colors hover:border-primary hover:bg-surface2 disabled:opacity-60"
           >
             {uploading ? <Loader2 size={22} className="animate-spin text-primary" /> : <ImagePlus size={22} className="text-muted" />}

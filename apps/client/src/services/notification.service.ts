@@ -1,9 +1,16 @@
 import api from '../lib/api'
 import { Notification } from '@veolms/shared'
 
+type AppNotification = Notification & {
+  priority?: 'Low' | 'Normal' | 'High' | 'Urgent'
+  targetUrl?: string | null
+  actionLabel?: string | null
+  actionUrl?: string | null
+}
+
 export async function getNotifications() {
   const { data } = await api.get('/notifications')
-  return data.data as Notification[]
+  return data.data as AppNotification[]
 }
 
 export async function getUnreadCount() {

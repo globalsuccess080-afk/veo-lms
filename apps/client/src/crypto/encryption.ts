@@ -14,9 +14,9 @@ function base64ToArrayBuffer(base64: string): ArrayBuffer {
 }
 
 // Utility to convert an ArrayBuffer to a base64 string
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
+function arrayBufferToBase64(buffer: ArrayBuffer | Uint8Array): string {
   let binary = ''
-  const bytes = new Uint8Array(buffer)
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
   const len = bytes.byteLength
   for (let i = 0; i < len; i++) {
     binary += String.fromCharCode(bytes[i])

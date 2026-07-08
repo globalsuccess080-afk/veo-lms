@@ -5,7 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { loginSchema } from '@veolms/shared'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 import { ShieldCheck } from 'lucide-react'
 import { adminLogin } from '../../services/auth.service'
 import { useAuthStore } from '../../store/authStore'
@@ -15,7 +15,7 @@ import { Input, Field } from '../../components/ui/Input'
 
 type FormData = z.infer<typeof loginSchema>
 
-const itemVars = {
+const itemVars: Variants = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }

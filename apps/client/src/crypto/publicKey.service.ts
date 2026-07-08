@@ -22,8 +22,9 @@ export async function getPublicKey(): Promise<string> {
       const response = await axios.get(`${baseUrl}/encryption/public-key`)
       
       if (response.data?.success && response.data?.data?.publicKey) {
-        cachedPublicKey = response.data.data.publicKey
-        return cachedPublicKey
+        const publicKey = response.data.data.publicKey as string
+        cachedPublicKey = publicKey
+        return publicKey
       }
       throw new Error('Invalid public key response')
     } catch (error) {

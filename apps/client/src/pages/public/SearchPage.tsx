@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Search, SlidersHorizontal, BookOpen } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, type Variants } from 'framer-motion'
 import { getCourses, searchCourses, getCategories } from '../../services/course.service'
 import { PageWrapper } from '../../components/layout/PageWrapper'
 import { CourseCard, CourseCardSkeleton } from '../../components/course/CourseCard'
@@ -11,12 +11,12 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { useDebounce } from '../../hooks/useDebounce'
 import { cn } from '../../lib/utils'
 
-const containerVars = {
+const containerVars: Variants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.05 } }
 }
 
-const itemVars = {
+const itemVars: Variants = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }

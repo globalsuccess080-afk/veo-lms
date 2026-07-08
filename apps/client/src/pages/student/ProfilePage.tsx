@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { User as UserIcon, Lock, Palette, Check } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 import { useAuthStore } from '../../store/authStore'
 import { useThemeStore } from '../../store/themeStore'
 import { updateProfile, changePassword } from '../../services/user.service'
@@ -15,12 +15,12 @@ import { MODE_OPTIONS, ACCENT_OPTIONS } from '../../lib/constants'
 import { cn } from '../../lib/utils'
 import { ProfileSkeleton } from '../../components/skeletons/student/ProfileSkeleton'
 
-const containerVars = {
+const containerVars: Variants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 }
 
-const itemVars = {
+const itemVars: Variants = {
   hidden: { opacity: 0, y: 15 },
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { GraduationCap } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, type Variants } from 'framer-motion'
 import { ColumnDef } from '@tanstack/react-table'
 
 import { getEnrollments, exportEnrollments } from '../../services/admin.service'
@@ -22,12 +22,12 @@ import { FilterChipList } from '../../components/admin/table/FilterChipList'
 import { TableFilters } from '../../components/admin/table/TableFilters'
 import { EnrollmentsSkeleton } from '../../components/skeletons/admin/EnrollmentsSkeleton'
 
-const containerVars = {
+const containerVars: Variants = {
   hidden: { opacity: 0 },
   show: { opacity: 1, transition: { staggerChildren: 0.1 } }
 }
 
-const itemVars = {
+const itemVars: Variants = {
   hidden: { opacity: 0, y: 10 },
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }

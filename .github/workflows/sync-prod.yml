@@ -16,6 +16,18 @@ jobs:
           ref: prod
           fetch-depth: 0
 
+      - name: Verify PROD_PAT
+        env:
+          PROD_PAT: ${{ secrets.PROD_PAT }}
+        run: |
+          if [ -z "$PROD_PAT" ]; then
+            echo "PROD_PAT is EMPTY"
+            exit 1
+          fi
+
+          echo "PROD_PAT FOUND"
+          echo "Token Length: ${#PROD_PAT}"
+
       - name: Push to Production Repository
         env:
           PROD_PAT: ${{ secrets.PROD_PAT }}

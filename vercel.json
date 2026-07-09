@@ -3,5 +3,11 @@
   "framework": "vite",
   "installCommand": "npm install",
   "buildCommand": "npm run build:vercel:client",
-  "outputDirectory": "dist"
+  "outputDirectory": "dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }

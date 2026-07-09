@@ -1,0 +1,1 @@
+import{j as n,l as s}from"./index-DmxRx2oB.js";function d({className:r,interactive:o,...e}){return n.jsx("div",{className:s("bg-card border border-line rounded-card",o&&"transition-colors duration-200 hover:border-line-strong hover:bg-surface2/40",r),...e})}export{d as C};

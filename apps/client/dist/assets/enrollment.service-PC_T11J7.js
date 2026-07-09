@@ -1,0 +1,1 @@
+import{f as a}from"./index-DmxRx2oB.js";async function o(){const{data:t}=await a.get("/enrollments/my");return t.data}async function r(t){const{data:n}=await a.get(`/enrollments/my/${t}`);return n.data}export{r as c,o as g};

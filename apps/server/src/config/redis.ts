@@ -31,4 +31,17 @@ export const redis = new Redis(env.REDIS_URL, {
   ...(isTLS ? { tls: { rejectUnauthorized: false } } : {})
 })
 
+redis.on('ready', async () => {
+  try {
+    await redis.config('SET', 'maxmemory-policy', 'noeviction')
+    logger.info('Redis eviction policy set to noeviction')
+  } catch (err) {
+    logger.error('Failed to set Redis eviction policy', { err })
+  }
+})
+
+redis.on('error', (err) => {
+  logger.error('Redis connection error', { err })
+})
+
 logger.info('Redis client configured', getRedisConnectionInfo())

@@ -46,8 +46,6 @@ export const upload = asyncHandler(async (req, res) => {
   lesson.video.failedReason = ''
   await lesson.save()
 
-  // Upload the raw video to R2 so the worker (separate service) can access it.
-  // Key pattern: source-videos/<lessonId>/<jobId><ext>
   const ext = req.file.originalname
     ? path.extname(req.file.originalname).toLowerCase() || '.mp4'
     : '.mp4'
@@ -64,7 +62,6 @@ export const upload = asyncHandler(async (req, res) => {
     throw uploadError
   }
 
-  // Delete the local temp file — it now lives in R2
   await fs.unlink(req.file.path).catch(() => undefined)
 
   lesson.video.message = 'Waiting for an available transcoder'
@@ -77,7 +74,6 @@ export const upload = asyncHandler(async (req, res) => {
       jobId, priority: 1, attempts: 1, removeOnComplete: false, removeOnFail: false,
     })
   } catch (error) {
-    // Clean up the R2 source if we can't queue (best effort)
     await storageService.deleteFile(videoR2Key).catch(() => undefined)
     lesson.video.status = 'failed'
     lesson.video.stage = 'FAILED'

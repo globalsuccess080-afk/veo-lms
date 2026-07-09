@@ -2,6 +2,7 @@ import path from 'path'
 import { Job, Worker } from 'bullmq'
 import { redis } from '../../../config/redis'
 import { env } from '../../../config/env'
+import { UPLOAD_ROOT } from '../../../config/upload'
 import { videoUploadQueue } from '../../../config/bullmq'
 import { Lesson } from '../../lesson/lesson.model'
 import { storageService } from '../../../storage/StorageService'
@@ -22,13 +23,15 @@ function timemarkToSeconds(value?: string): number {
 
 async function processTranscode(job: Job<TranscodeJobData>) {
   const { lessonId, videoR2Key } = job.data
+  if (!videoR2Key) {
+    throw new Error('Missing source video in storage. Please re-upload the video.')
+  }
   const startedAt = Date.now()
   const progress = new ProgressService(job, lessonId, startedAt)
 
-  // Derive a local temp path for the downloaded source video
   const ext = path.extname(videoR2Key) || '.mp4'
-  const videoPath = path.join(env.VIDEO_TEMP_PATH, 'videos', `${job.id}${ext}`)
-  const outputDir = path.join(env.VIDEO_TEMP_PATH, lessonId)
+  const videoPath = path.join(UPLOAD_ROOT, 'videos', `${job.id}${ext}`)
+  const outputDir = path.join(UPLOAD_ROOT, lessonId)
   const hlsDir = path.join(outputDir, 'hls')
   const thumbnailDir = path.join(outputDir, 'thumbnails')
   let handedOff = false
@@ -36,7 +39,6 @@ async function processTranscode(job: Job<TranscodeJobData>) {
   try {
     if (!await Lesson.exists({ _id: lessonId, 'video.jobId': String(job.id) })) return { skipped: 'stale-job' }
 
-    // ── Download source video from R2 (cross-service safe) ──
     await progress.transition('ANALYZING', 1, 'Downloading source video')
     await storageService.downloadFile(videoR2Key, videoPath)
 
@@ -75,16 +77,12 @@ async function processTranscode(job: Job<TranscodeJobData>) {
     await videoUploadQueue.add('upload', uploadData, { jobId: `video-${lessonId}-${job.id}` })
     handedOff = true
 
-    // Delete R2 source video now that transcoding is done — no longer needed
-    await storageService.deleteFile(videoR2Key).catch((err) => {
-      console.warn(`[video-transcode] Failed to delete R2 source ${videoR2Key}:`, err.message)
-    })
+    await storageService.deleteFile(videoR2Key).catch(() => undefined)
 
     return { lessonId, uploadQueued: true }
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Video processing failed'
     await progress.transition('FAILED', 0, message).catch(() => undefined)
-    // Best-effort cleanup of R2 source on failure
     await storageService.deleteFile(videoR2Key).catch(() => undefined)
     throw error
   } finally {

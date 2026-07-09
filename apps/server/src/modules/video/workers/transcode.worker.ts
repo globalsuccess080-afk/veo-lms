@@ -10,7 +10,7 @@ import { CleanupService } from '../services/CleanupService'
 import { MetadataService } from '../services/MetadataService'
 import { ProgressService } from '../services/ProgressService'
 import { ThumbnailService } from '../services/ThumbnailService'
-import { QUALITY_PRESETS, TranscodeService } from '../services/TranscodeService'
+import { resolveQualities, TranscodeService } from '../services/TranscodeService'
 import { TranscodeJobData, UploadJobData } from '../video.types'
 
 function timemarkToSeconds(value?: string): number {
@@ -51,10 +51,11 @@ async function processTranscode(job: Job<TranscodeJobData>) {
     await progress.report('GENERATING_THUMBNAILS', 10, 'Thumbnails ready')
 
     await progress.transition('TRANSCODING', 10, 'Generating adaptive HLS renditions')
-    const expectedQualities = Object.keys(QUALITY_PRESETS)
+    const expectedQualities = resolveQualities(metadata.height)
     const qualities = await TranscodeService.transcodeAllQualities(
       videoPath,
       hlsDir,
+      metadata.height,
       env.VIDEO_SEGMENT_DURATION,
       info => {
         const encodedSeconds = timemarkToSeconds(info.timemark)
@@ -62,8 +63,9 @@ async function processTranscode(job: Job<TranscodeJobData>) {
         const overall = 10 + Math.min(100, Math.max(0, raw)) * 0.6
         const elapsedSeconds = (Date.now() - startedAt) / 1000
         const etaSeconds = raw > 1 ? Math.max(0, Math.round(elapsedSeconds / raw * (100 - raw))) : null
-        void progress.report('TRANSCODING', overall, 'Generating adaptive HLS renditions', {
+        void progress.report('TRANSCODING', overall, info.quality ? `Transcoding ${info.quality}` : 'Generating adaptive HLS renditions', {
           etaSeconds,
+          currentQuality: info.quality,
           completedQualities: raw >= 100 ? expectedQualities : [],
         })
       },

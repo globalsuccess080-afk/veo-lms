@@ -1,8 +1,8 @@
+import './config/ffmpeg'
 import { connectDB } from './config/db'
 import { redis } from './config/redis'
 import { logger } from './utils/logger'
 
-// Initialize workers
 import './modules/email/workers/email.worker'
 import './modules/announcement/workers/announcement.worker'
 import './modules/admin/workers/export.worker'

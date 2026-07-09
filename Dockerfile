@@ -21,6 +21,8 @@ RUN npm run build -w @veolms/server
 # Production stage
 FROM node:20-alpine AS runner
 
+RUN apk add --no-cache ffmpeg
+
 WORKDIR /app
 ENV NODE_ENV=production
 

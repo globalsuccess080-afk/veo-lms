@@ -5,6 +5,7 @@ import { Lesson } from '../lesson/lesson.model'
 import { videoQueue, videoUploadQueue } from '../../config/bullmq'
 import { storageService } from '../../storage/StorageService'
 import { formatAssetPath } from '../../utils/assetPath'
+import path from 'path'
 import fs from 'fs/promises'
 import { randomUUID } from 'crypto'
 import { param } from '../../utils/params'
@@ -16,11 +17,13 @@ export const upload = asyncHandler(async (req, res) => {
 
   const lessonId = String(req.body.lessonId || '')
   if (!lessonId) {
+    await fs.unlink(req.file.path).catch(() => undefined)
     throw new ApiError(400, 'lessonId is required')
   }
 
   const lesson = await Lesson.findById(lessonId)
   if (!lesson) {
+    await fs.unlink(req.file.path).catch(() => undefined)
     throw new ApiError(404, 'Lesson not found')
   }
 
@@ -36,21 +39,46 @@ export const upload = asyncHandler(async (req, res) => {
   const jobId = randomUUID()
   lesson.video.status = 'queued'
   lesson.video.stage = 'QUEUED'
-  lesson.video.message = 'Waiting for an available transcoder'
+  lesson.video.message = 'Uploading video to storage'
   lesson.video.progress = 0
   lesson.video.storageProvider = 'r2'
   lesson.video.jobId = jobId
   lesson.video.failedReason = ''
   await lesson.save()
 
+  // Upload the raw video to R2 so the worker (separate service) can access it.
+  // Key pattern: source-videos/<lessonId>/<jobId><ext>
+  const ext = req.file.originalname
+    ? path.extname(req.file.originalname).toLowerCase() || '.mp4'
+    : '.mp4'
+  const videoR2Key = `source-videos/${lessonId}/${jobId}${ext}`
+
+  try {
+    await storageService.uploadFile(req.file.path, videoR2Key)
+  } catch (uploadError) {
+    await fs.unlink(req.file.path).catch(() => undefined)
+    lesson.video.status = 'failed'
+    lesson.video.stage = 'FAILED'
+    lesson.video.message = 'Failed to upload video to storage'
+    await lesson.save()
+    throw uploadError
+  }
+
+  // Delete the local temp file — it now lives in R2
+  await fs.unlink(req.file.path).catch(() => undefined)
+
+  lesson.video.message = 'Waiting for an available transcoder'
+  await lesson.save()
+
   try {
     await videoQueue.add('transcode', {
-      lessonId, videoPath: req.file.path, userId: req.user?.id,
+      lessonId, videoR2Key, userId: req.user?.id,
     }, {
       jobId, priority: 1, attempts: 1, removeOnComplete: false, removeOnFail: false,
     })
   } catch (error) {
-    await fs.unlink(req.file.path).catch(() => undefined)
+    // Clean up the R2 source if we can't queue (best effort)
+    await storageService.deleteFile(videoR2Key).catch(() => undefined)
     lesson.video.status = 'failed'
     lesson.video.stage = 'FAILED'
     lesson.video.message = 'Could not queue video processing'

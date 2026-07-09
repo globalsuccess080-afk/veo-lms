@@ -16,7 +16,8 @@ export interface VideoJobProgress {
 
 export interface TranscodeJobData {
   lessonId: string
-  videoPath: string
+  /** R2 object key of the raw source video uploaded by the server */
+  videoR2Key: string
   userId?: string
 }
 

@@ -9,6 +9,8 @@ import {
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import fs from 'fs'
 import path from 'path'
+import { pipeline } from 'stream/promises'
+import { Readable } from 'stream'
 import mime from 'mime-types'
 import { env } from '../config/env'
 import { r2Client } from '../config/r2'
@@ -44,6 +46,18 @@ export class StorageService {
     const response = await r2Client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }))
     if (!response.Body) throw new Error(`Storage object has no body: ${key}`)
     return response.Body.transformToString('utf-8')
+  }
+
+  /**
+   * Downloads an R2 object and writes it to `localPath`.
+   * Creates parent directories as needed.
+   */
+  public async downloadFile(key: string, localPath: string): Promise<void> {
+    await fs.promises.mkdir(path.dirname(localPath), { recursive: true })
+    const response = await r2Client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }))
+    if (!response.Body) throw new Error(`Storage object has no body: ${key}`)
+    const writeStream = fs.createWriteStream(localPath)
+    await pipeline(response.Body as Readable, writeStream)
   }
 
   public async uploadFile(localPath: string, key: string): Promise<{ key: string; url: string }> {

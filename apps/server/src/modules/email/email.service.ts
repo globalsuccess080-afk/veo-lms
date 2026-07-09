@@ -2,21 +2,28 @@ import nodemailer from 'nodemailer'
 import { env } from '../../config/env'
 import { logger } from '../../utils/logger'
 
-const smtpPort = env.SMTP_PORT || 587
+const smtpPort = env.SMTP_PORT || 465
 const smtpHost = env.SMTP_HOST || 'smtp.gmail.com'
+const smtpSecure = smtpPort === 465
 
-const transporter = (env.SMTP_USER && env.SMTP_PASS) ? nodemailer.createTransport({
-  host: smtpHost,
-  port: smtpPort,
-  secure: smtpPort === 465,
-  auth: {
-    user: env.SMTP_USER,
-    pass: env.SMTP_PASS
-  },
-  connectionTimeout: 30000,
-  greetingTimeout: 30000,
-  socketTimeout: 30000,
-}) : null
+function createTransporter() {
+  if (!env.SMTP_USER || !env.SMTP_PASS) return null
+  return nodemailer.createTransport({
+    host: smtpHost,
+    port: smtpPort,
+    secure: smtpSecure,
+    auth: {
+      user: env.SMTP_USER,
+      pass: env.SMTP_PASS
+    },
+    tls: {
+      rejectUnauthorized: false
+    },
+    connectionTimeout: 30000,
+    greetingTimeout: 30000,
+    socketTimeout: 60000,
+  })
+}
 
 export interface SendEmailOptions {
   to: string | string[]
@@ -26,17 +33,19 @@ export interface SendEmailOptions {
 }
 
 export async function sendEmail(options: SendEmailOptions) {
+  const transporter = createTransporter()
+
   logger.info('sendEmail invoked', {
     to: options.to,
     subject: options.subject,
-    smtpConfigured: Boolean(transporter && env.SMTP_USER && env.SMTP_PASS),
+    smtpConfigured: Boolean(transporter),
     smtpHost,
     smtpPort,
-    smtpSecure: smtpPort === 465,
+    smtpSecure,
     smtpUser: env.SMTP_USER || null,
   })
 
-  if (!transporter || !env.SMTP_USER) {
+  if (!transporter) {
     logger.warn('Email not sent because SMTP is not configured', {
       to: options.to,
       subject: options.subject,

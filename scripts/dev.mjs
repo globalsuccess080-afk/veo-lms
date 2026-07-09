@@ -21,10 +21,12 @@ function start(label, args) {
 
 const server = start('server', ['run', 'dev', '-w', '@veolms/server'])
 const client = start('client', ['run', 'dev', '-w', '@veolms/client'])
+const worker = start('worker', ['run', 'worker', '-w', '@veolms/server'])
 
 function shutdown(code = 0) {
   server.kill()
   client.kill()
+  worker.kill()
   process.exit(code)
 }
 

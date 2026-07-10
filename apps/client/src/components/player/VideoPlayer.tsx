@@ -516,17 +516,24 @@ const FilePlayer = forwardRef<VideoPlayerHandle, FilePlayerProps>(function FileP
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.2 } }}
-            className="absolute inset-0 flex items-center justify-center bg-black/40 pointer-events-none"
+            className="absolute inset-0 z-10 flex items-center justify-center bg-black/40"
           >
-            <motion.div
+            <motion.button
+              type="button"
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
-              className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-2xl ring-2 ring-white/30"
+              whileTap={{ scale: 0.94 }}
+              onClick={(e) => {
+                e.stopPropagation()
+                togglePlay()
+              }}
+              className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-2xl ring-2 ring-white/30 transition-colors active:bg-white/30"
+              aria-label={savedPosition > 0 ? 'Resume video' : 'Play video'}
             >
               <Play size={36} className="text-white ml-1.5" fill="white" />
-            </motion.div>
+            </motion.button>
             {savedPosition > 0 && (
-              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm">
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-sm pointer-events-none">
                 Resume from {formatTime(savedPosition)}
               </div>
             )}

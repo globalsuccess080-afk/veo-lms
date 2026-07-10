@@ -103,10 +103,11 @@ export const uploadImage = asyncHandler(async (req, res) => {
 
 export const uploadResource = asyncHandler(async (req, res) => {
   if (!req.file) throw new ApiError(400, 'No file provided')
+  if (!req.file.buffer) throw new ApiError(400, 'Invalid resource upload')
 
-  const key = `resources/${req.file.filename}`
-  const result = await storageService.uploadFile(req.file.path, key)
-    .finally(() => fs.unlink(req.file!.path).catch(() => {}))
+  const ext = path.extname(req.file.originalname).toLowerCase()
+  const key = `resources/${randomUUID()}${ext}`
+  const result = await storageService.uploadBuffer(req.file.buffer, key, req.file.mimetype)
 
   sendSuccess(
     res,

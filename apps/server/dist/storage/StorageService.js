@@ -87,6 +87,7 @@ class StorageService {
             Key: key,
             Body: buffer,
             ContentType: contentType,
+            ContentLength: buffer.length,
         });
         await r2_1.r2Client.send(command);
         return {

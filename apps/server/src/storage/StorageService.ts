@@ -95,6 +95,7 @@ export class StorageService {
       Key: key,
       Body: buffer,
       ContentType: contentType,
+      ContentLength: buffer.length,
     })
 
     await r2Client.send(command)

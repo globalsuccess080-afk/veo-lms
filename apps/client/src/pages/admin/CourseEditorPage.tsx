@@ -809,11 +809,17 @@ function ResourceManager({ resources, setResources }: {
     resources: LessonResource[]
     setResources: React.Dispatch<React.SetStateAction<LessonResource[]>>
 }) {
+    const maxResourceSize = 10 * 1024 * 1024
     const fileRef = useRef<HTMLInputElement>(null)
     const [progress, setProgress] = useState<number | null>(null)
 
     const handleFile = async (file: File | undefined) => {
         if (!file) return
+        if (file.size > maxResourceSize) {
+            toast.error('Resource file must be 10 MB or smaller')
+            if (fileRef.current) fileRef.current.value = ''
+            return
+        }
         setProgress(0)
         try {
             const result = await uploadResource(file, setProgress)
@@ -830,7 +836,7 @@ function ResourceManager({ resources, setResources }: {
     return (
         <div>
             <Label>Lecture resources</Label>
-            <p className="text-[12px] font-medium text-subtle mb-3">Attach notes, PDFs, ZIPs or source files students can download. Max 50 MB each.</p>
+            <p className="text-[12px] font-medium text-subtle mb-3">Attach notes, PDFs, ZIPs or source files students can download. Max 10 MB each.</p>
 
             {resources.length > 0 && (
                 <div className="space-y-2.5 mb-4">

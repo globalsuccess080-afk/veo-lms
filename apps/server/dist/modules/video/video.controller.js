@@ -93,9 +93,11 @@ exports.uploadImage = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
 exports.uploadResource = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     if (!req.file)
         throw new apiError_1.ApiError(400, 'No file provided');
-    const key = `resources/${req.file.filename}`;
-    const result = await StorageService_1.storageService.uploadFile(req.file.path, key)
-        .finally(() => promises_1.default.unlink(req.file.path).catch(() => { }));
+    if (!req.file.buffer)
+        throw new apiError_1.ApiError(400, 'Invalid resource upload');
+    const ext = path_1.default.extname(req.file.originalname).toLowerCase();
+    const key = `resources/${(0, crypto_1.randomUUID)()}${ext}`;
+    const result = await StorageService_1.storageService.uploadBuffer(req.file.buffer, key, req.file.mimetype);
     (0, apiResponse_1.sendSuccess)(res, { path: (0, assetPath_1.formatAssetPath)(result.key), key: result.key, fileName: req.file.originalname, size: req.file.size, type: req.file.mimetype }, 'Resource uploaded successfully', 201);
 });
 exports.jobStatus = (0, asyncHandler_1.asyncHandler)(async (req, res) => {

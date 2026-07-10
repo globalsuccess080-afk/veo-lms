@@ -77,8 +77,8 @@ export const uploadImage = multer({
 })
 
 export const uploadResource = multer({
-  storage: diskStorage(RESOURCE_DIR, ''),
-  limits: { fileSize: 50 * 1024 * 1024 },
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase()
     const allowedMime = ALLOWED_RESOURCE.includes(file.mimetype)

@@ -79,8 +79,8 @@ exports.uploadImage = (0, multer_1.default)({
     }
 });
 exports.uploadResource = (0, multer_1.default)({
-    storage: diskStorage(exports.RESOURCE_DIR, ''),
-    limits: { fileSize: 50 * 1024 * 1024 },
+    storage: multer_1.default.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
         const ext = path_1.default.extname(file.originalname).toLowerCase();
         const allowedMime = ALLOWED_RESOURCE.includes(file.mimetype);

@@ -28,6 +28,10 @@ interface VideoPlayerProps {
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2]
 const SEEK_STEP = 10
 
+type LockableOrientation = ScreenOrientation & {
+  lock?: (orientation: 'any' | 'natural' | 'landscape' | 'portrait' | 'portrait-primary' | 'portrait-secondary' | 'landscape-primary' | 'landscape-secondary') => Promise<void>
+}
+
 export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(function VideoPlayer(
   { youtubeUrl, fileUrl, poster, savedPosition = 0, onProgress, onEnded, onToggleTheater, theater, fill, durationHint },
   ref
@@ -209,7 +213,11 @@ const FilePlayer = forwardRef<VideoPlayerHandle, FilePlayerProps>(function FileP
 
   // Fullscreen change listener
   useEffect(() => {
-    const handler = () => setIsFs(!!document.fullscreenElement)
+    const handler = () => {
+      const fullscreen = !!document.fullscreenElement
+      setIsFs(fullscreen)
+      if (!fullscreen && screen.orientation?.unlock) screen.orientation.unlock()
+    }
     document.addEventListener('fullscreenchange', handler)
     return () => document.removeEventListener('fullscreenchange', handler)
   }, [])
@@ -305,11 +313,17 @@ const FilePlayer = forwardRef<VideoPlayerHandle, FilePlayerProps>(function FileP
     } catch { /* PiP not supported */ }
   }, [])
 
-  const toggleFullscreen = useCallback(() => {
+  const toggleFullscreen = useCallback(async () => {
     const el = containerRef.current
     if (!el) return
-    if (!document.fullscreenElement) el.requestFullscreen().catch(() => null)
-    else document.exitFullscreen().catch(() => null)
+    if (!document.fullscreenElement) {
+      await el.requestFullscreen().catch(() => null)
+      const orientation = screen.orientation as LockableOrientation | undefined
+      await orientation?.lock?.('landscape').catch(() => null)
+    } else {
+      await document.exitFullscreen().catch(() => null)
+      screen.orientation?.unlock?.()
+    }
   }, [])
 
   const closeSettings = useCallback(() => { setShowSettings(false); setSettingsView('main') }, [])

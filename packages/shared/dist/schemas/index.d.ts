@@ -303,18 +303,12 @@ export declare const createOrderSchema: z.ZodObject<{
     courseId: string;
     couponCode?: string | undefined;
 }>;
-export declare const verifyPaymentSchema: z.ZodObject<{
-    razorpayOrderId: z.ZodString;
-    razorpayPaymentId: z.ZodString;
-    razorpaySignature: z.ZodString;
+export declare const paymentStatusParamsSchema: z.ZodObject<{
+    orderId: z.ZodString;
 }, "strip", z.ZodTypeAny, {
-    razorpayOrderId: string;
-    razorpayPaymentId: string;
-    razorpaySignature: string;
+    orderId: string;
 }, {
-    razorpayOrderId: string;
-    razorpayPaymentId: string;
-    razorpaySignature: string;
+    orderId: string;
 }>;
 export declare const updateProgressSchema: z.ZodObject<{
     courseId: z.ZodString;

@@ -15,12 +15,14 @@ const payment_model_1 = require("../payment/payment.model");
 const notification_model_1 = require("../notification/notification.model");
 const apiError_1 = require("../../utils/apiError");
 const queryBuilder_1 = require("../../utils/queryBuilder");
+const admin_queue_1 = require("./admin.queue");
+const completedPaymentStatuses = ['COMPLETED', 'paid'];
 async function getStats() {
     const [totalCourses, totalStudents, totalEnrollments, payments] = await Promise.all([
         course_model_1.Course.countDocuments(),
         user_model_1.User.countDocuments({ role: 'student' }),
         enrollment_model_1.Enrollment.countDocuments(),
-        payment_model_1.Payment.find({ status: 'paid' }).lean()
+        payment_model_1.Payment.find({ status: { $in: completedPaymentStatuses } }).lean()
     ]);
     const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
     const recentEnrollments = await enrollment_model_1.Enrollment.find()
@@ -127,7 +129,6 @@ async function sendAnnouncement(title, message, io) {
     }
     return { sent: students.length };
 }
-const admin_queue_1 = require("./admin.queue");
 async function queueExport(type) {
     const job = await admin_queue_1.adminExportQueue.add('export', { type });
     return { jobId: job.id, message: `Export job for ${type} queued` };

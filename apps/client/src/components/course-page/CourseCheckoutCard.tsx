@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { validateCoupon } from '../../services/coupon.service'
 import { toast } from 'sonner'
 import { Tag } from 'lucide-react'
+import Confetti from 'react-confetti'
 
 interface CourseCheckoutCardProps {
   course: Course
@@ -36,18 +37,32 @@ export function CourseCheckoutCard({
   const [couponCode, setCouponCode] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string, discount: number, finalAmount: number } | null>(null)
   const [validatingCoupon, setValidatingCoupon] = useState(false)
+  const [couponError, setCouponError] = useState('')
+  const [showCouponConfetti, setShowCouponConfetti] = useState(false)
 
   const handleApplyCoupon = async () => {
-    if (!couponCode) return
+    const normalizedCode = couponCode.trim().toUpperCase()
+    if (!normalizedCode) {
+      setCouponError('Enter a coupon code')
+      return
+    }
+    if (!/^[A-Z0-9_-]{3,30}$/.test(normalizedCode)) {
+      setCouponError('Use 3-30 letters, numbers, hyphen, or underscore')
+      return
+    }
+    setCouponError('')
     setValidatingCoupon(true)
     try {
-      const result = await validateCoupon(course.id, couponCode)
+      const result = await validateCoupon(course.id, normalizedCode)
       setAppliedCoupon({
-        code: couponCode,
+        code: normalizedCode,
         discount: result.discountAmount,
         finalAmount: result.finalAmount
       })
+      setCouponCode(normalizedCode)
+      setShowCouponConfetti(true)
       toast.success('Coupon applied successfully!')
+      window.setTimeout(() => setShowCouponConfetti(false), 3500)
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Invalid coupon code')
       setAppliedCoupon(null)
@@ -75,6 +90,15 @@ export function CourseCheckoutCard({
 
   return (
     <div className="relative">
+      {showCouponConfetti && (
+        <Confetti
+          width={window.innerWidth}
+          height={window.innerHeight}
+          recycle={false}
+          numberOfPieces={180}
+          className="fixed inset-0 pointer-events-none z-[80]"
+        />
+      )}
       <div
         className="absolute -inset-3 rounded-[calc(var(--rad-card)+8px)] pointer-events-none bg-[radial-gradient(ellipse_at_top,var(--primary),transparent_65%)] opacity-20"
         style={{ filter: 'blur(14px)' }}
@@ -129,9 +153,12 @@ export function CourseCheckoutCard({
                     type="text"
                     placeholder="Enter code"
                     value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value.toUpperCase())
+                      setCouponError('')
+                    }}
                     disabled={!!appliedCoupon || validatingCoupon}
-                    className="w-full pl-9 pr-3 py-2 bg-background border border-border rounded-md text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all disabled:opacity-60"
+                    className={`w-full pl-9 pr-3 py-2 bg-background border rounded-md text-sm outline-none focus:ring-2 transition-all disabled:opacity-60 ${couponError ? 'border-danger focus:ring-danger/20 focus:border-danger' : 'border-border focus:ring-primary/20 focus:border-primary'}`}
                   />
                 </div>
                 {appliedCoupon ? (
@@ -144,6 +171,12 @@ export function CourseCheckoutCard({
                   </button>
                 )}
               </div>
+              {couponError && <p className="text-[11px] font-medium text-danger">{couponError}</p>}
+              {appliedCoupon && (
+                <p className="text-[11px] font-medium text-success">
+                  {appliedCoupon.code} saved {formatINR(appliedCoupon.discount)}. New price: {formatINR(appliedCoupon.finalAmount)}.
+                </p>
+              )}
             </div>
           )}
 
@@ -166,8 +199,8 @@ export function CourseCheckoutCard({
               style={ctaStyle}
             >
               <Zap size={16} fill="currentColor" />
-              {paying ? 'Processing…' : 'Enroll Now'}
-              <ArrowRight size={16} />
+              {paying ? 'Processing...' : 'Enroll Now'}
+              {!paying && <ArrowRight size={16} />}
             </button>
           ) : (
             <Link

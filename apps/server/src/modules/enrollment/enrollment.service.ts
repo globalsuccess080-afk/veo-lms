@@ -1,7 +1,7 @@
 import { Enrollment } from './enrollment.model'
 import { Course } from '../course/course.model'
-import { ApiError } from '../../utils/apiError'
 import { formatAssetPath } from '../../utils/assetPath'
+import { ClientSession } from 'mongoose'
 
 export async function getMyEnrollments(userId: string) {
   const enrollments = await Enrollment.find({ userId, isActive: true })
@@ -32,12 +32,12 @@ export async function checkEnrollment(userId: string, courseId: string) {
   return { enrolled: !!enrollment, enrollment }
 }
 
-export async function createEnrollment(userId: string, courseId: string, paymentId: string) {
-  const existing = await Enrollment.findOne({ userId, courseId })
-  if (existing) throw new ApiError(409, 'Already enrolled')
+export async function createEnrollment(userId: string, courseId: string, paymentId: string, session?: ClientSession) {
+  const existing = await Enrollment.findOne({ userId, courseId }).session(session || null)
+  if (existing) return existing
 
-  const enrollment = await Enrollment.create({ userId, courseId, paymentId })
-  const course = await Course.findByIdAndUpdate(courseId, { $inc: { enrollmentCount: 1 } })
+  const [enrollment] = await Enrollment.create([{ userId, courseId, paymentId }], { session })
+  const course = await Course.findByIdAndUpdate(courseId, { $inc: { enrollmentCount: 1 } }, { session })
   
   const { User } = await import('../user/user.model')
   const user = await User.findById(userId)

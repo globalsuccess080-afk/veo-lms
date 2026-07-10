@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, Eye, EyeOff } from 'lucide-react'
+import { Plus, Trash2, Eye, EyeOff, Info } from 'lucide-react'
 import { motion, type Variants } from 'framer-motion'
 import { ColumnDef } from '@tanstack/react-table'
 
@@ -60,6 +60,7 @@ export function CouponsPage() {
   const { data: courses } = useQuery({ queryKey: ['admin-courses'], queryFn: () => getAdminCourses() })
 
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [selectedCoupon, setSelectedCoupon] = useState<Coupon | null>(null)
   const [applyToAll, setApplyToAll] = useState(true)
   const [selectedCourses, setSelectedCourses] = useState<string[]>([])
 
@@ -71,12 +72,21 @@ export function CouponsPage() {
   })
 
   const handleCreateCoupon = () => {
-    if (!formData.code) return toast.error('Coupon code is required')
+    const code = formData.code?.trim().toUpperCase() || ''
+    if (!code) return toast.error('Coupon code is required')
+    if (!/^[A-Z0-9_-]{3,30}$/.test(code)) return toast.error('Coupon code must be 3-30 letters, numbers, hyphen, or underscore')
+    if (!formData.description?.trim()) return toast.error('Description is required')
     if (formData.value === undefined || formData.value <= 0) return toast.error('Value must be greater than 0')
     if (formData.type === 'percentage' && formData.value > 100) return toast.error('Percentage cannot exceed 100%')
+    if (formData.usageLimit !== null && formData.usageLimit !== undefined && formData.usageLimit <= 0) return toast.error('Usage limit must be greater than 0')
+    if (formData.maxDiscountAmount !== null && formData.maxDiscountAmount !== undefined && formData.maxDiscountAmount <= 0) return toast.error('Max discount must be greater than 0')
+    if (!formData.validFrom || !formData.validUntil) return toast.error('Both validity dates are required')
+    if (new Date(formData.validUntil) < new Date(formData.validFrom)) return toast.error('Valid until must be after valid from')
     
     const finalData = {
       ...formData,
+      code,
+      description: formData.description.trim(),
       applicableCourseIds: applyToAll ? null : selectedCourses
     }
     
@@ -150,7 +160,7 @@ export function CouponsPage() {
       cell: ({ row }) => {
         const type = row.getValue('type')
         const value = row.getValue('value')
-        return <span className="text-[14px] font-medium text-muted">{type === 'percentage' ? `${value}%` : `₹${value}`}</span>
+        return <span className="text-[14px] font-medium text-muted">{type === 'percentage' ? `${value}%` : `INR ${value}`}</span>
       }
     },
     {
@@ -182,6 +192,9 @@ export function CouponsPage() {
         const coupon = row.original
         return (
           <div className="flex items-center gap-1.5">
+            <button onClick={() => setSelectedCoupon(coupon)} className="p-2 rounded-lg text-muted hover:bg-surface hover:text-fg transition-all shadow-sm border border-transparent hover:border-line" title="View details">
+              <Info size={16} strokeWidth={2.5} />
+            </button>
             <button onClick={() => toggleMutation.mutate({ id: coupon.id || (coupon as any)._id, isActive: !coupon.isActive })} className="p-2 rounded-lg text-muted hover:bg-surface hover:text-fg transition-all shadow-sm border border-transparent hover:border-line" title={coupon.isActive ? 'Deactivate' : 'Activate'}>
               {coupon.isActive ? <EyeOff size={16} strokeWidth={2.5} /> : <Eye size={16} strokeWidth={2.5} />}
             </button>
@@ -304,7 +317,7 @@ export function CouponsPage() {
                 value={formData.type as string}
                 options={[
                   { value: 'percentage', label: 'Percentage (%)' },
-                  { value: 'fixed', label: 'Fixed Amount (₹)' }
+                  { value: 'fixed', label: 'Fixed Amount (INR)' }
                 ]}
                 onChange={v => setFormData({ ...formData, type: v as 'fixed'|'percentage' })}
               />
@@ -359,7 +372,7 @@ export function CouponsPage() {
             </div>
             {formData.type === 'percentage' && (
               <div className="space-y-1.5">
-                <Label>Max Discount (₹)</Label>
+                <Label>Max Discount (INR)</Label>
                 <Input 
                   type="number" 
                   value={formData.maxDiscountAmount || ''} 
@@ -413,6 +426,53 @@ export function CouponsPage() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal open={!!selectedCoupon} onClose={() => setSelectedCoupon(null)} title="Coupon Details" className="max-w-xl">
+        {selectedCoupon && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs text-muted">Code</p>
+                <p className="text-lg font-bold tracking-wide text-fg">{selectedCoupon.code}</p>
+              </div>
+              <Badge tone={selectedCoupon.isActive ? 'success' : 'warning'}>{selectedCoupon.isActive ? 'Active' : 'Inactive'}</Badge>
+            </div>
+
+            <div>
+              <p className="text-xs text-muted">Description</p>
+              <p className="text-sm text-fg">{selectedCoupon.description}</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg border border-line p-3">
+                <p className="text-xs text-muted">Discount</p>
+                <p className="text-sm font-bold text-fg">
+                  {selectedCoupon.type === 'percentage' ? `${selectedCoupon.value}%` : `INR ${selectedCoupon.value}`}
+                </p>
+              </div>
+              <div className="rounded-lg border border-line p-3">
+                <p className="text-xs text-muted">Usage</p>
+                <p className="text-sm font-bold text-fg">{selectedCoupon.usedCount}{selectedCoupon.usageLimit ? ` / ${selectedCoupon.usageLimit}` : ' / Unlimited'}</p>
+              </div>
+              <div className="rounded-lg border border-line p-3">
+                <p className="text-xs text-muted">Valid From</p>
+                <p className="text-sm font-bold text-fg">{new Date(selectedCoupon.validFrom).toLocaleDateString()}</p>
+              </div>
+              <div className="rounded-lg border border-line p-3">
+                <p className="text-xs text-muted">Valid Until</p>
+                <p className="text-sm font-bold text-fg">{new Date(selectedCoupon.validUntil).toLocaleDateString()}</p>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs text-muted">Applicability</p>
+              <p className="text-sm text-fg">
+                {(selectedCoupon.applicableCourses?.length || selectedCoupon.applicableCourseIds?.length) ? 'Specific courses' : 'All courses'}
+              </p>
+            </div>
+          </div>
+        )}
       </Modal>
     </AdminPage>
   )

@@ -7,6 +7,8 @@ import { Progress } from '../progress/progress.model'
 import { CouponUsage } from '../coupon/coupon.model'
 import { redis } from '../../config/redis'
 
+const completedPaymentStatuses = ['COMPLETED', 'paid']
+
 export async function getDashboard(userId: string, range: string) {
     const cacheKey = `analytics:tenant:${userId}:${range}`
     
@@ -58,7 +60,7 @@ export async function getDashboard(userId: string, range: string) {
     ] = await Promise.all([
         // Revenue (Total, This Range)
         Payment.aggregate([
-            { $match: { status: 'paid' } },
+            { $match: { status: { $in: completedPaymentStatuses } } },
             { $group: { 
                 _id: null, 
                 total: { $sum: '$amount' },
@@ -98,7 +100,7 @@ export async function getDashboard(userId: string, range: string) {
 
         // Revenue Trends
         Payment.aggregate([
-            { $match: { status: 'paid', createdAt: { $gte: startDate } } },
+            { $match: { status: { $in: completedPaymentStatuses }, createdAt: { $gte: startDate } } },
             { $group: { 
                 _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } }, 
                 revenue: { $sum: '$amount' } 
@@ -108,7 +110,7 @@ export async function getDashboard(userId: string, range: string) {
 
         // Revenue Breakdown: Category
         Payment.aggregate([
-            { $match: { status: 'paid', createdAt: { $gte: startDate } } },
+            { $match: { status: { $in: completedPaymentStatuses }, createdAt: { $gte: startDate } } },
             { $lookup: { from: 'courses', localField: 'courseId', foreignField: '_id', as: 'course' } },
             { $unwind: '$course' },
             { $group: { _id: '$course.category', revenue: { $sum: '$amount' } } },
@@ -117,7 +119,7 @@ export async function getDashboard(userId: string, range: string) {
 
         // Revenue Breakdown: Coupon
         Payment.aggregate([
-            { $match: { status: 'paid', createdAt: { $gte: startDate }, couponCode: { $ne: null } } },
+            { $match: { status: { $in: completedPaymentStatuses }, createdAt: { $gte: startDate }, couponCode: { $ne: null } } },
             { $group: { _id: '$couponCode', revenue: { $sum: '$amount' }, usageCount: { $sum: 1 } } },
             { $sort: { revenue: -1 } },
             { $limit: 10 }
@@ -146,13 +148,13 @@ export async function getDashboard(userId: string, range: string) {
                 revenue: {
                     $sum: {
                         $map: {
-                            input: { $filter: { input: '$payments', as: 'p', cond: { $eq: ['$$p.status', 'paid'] } } },
+                            input: { $filter: { input: '$payments', as: 'p', cond: { $in: ['$$p.status', completedPaymentStatuses] } } },
                             as: 'paidP',
                             in: '$$paidP.amount'
                         }
                     }
                 },
-                purchased: { $size: { $filter: { input: '$payments', as: 'p', cond: { $eq: ['$$p.status', 'paid'] } } } },
+                purchased: { $size: { $filter: { input: '$payments', as: 'p', cond: { $in: ['$$p.status', completedPaymentStatuses] } } } },
                 started: { $size: { $filter: { input: '$enrollments', as: 'e', cond: { $gt: ['$$e.progress', 0] } } } },
                 completed: { $size: { $filter: { input: '$enrollments', as: 'e', cond: { $eq: ['$$e.progress', 100] } } } },
                 watchTimeSeconds: { $sum: '$progresses.watchedSeconds' }

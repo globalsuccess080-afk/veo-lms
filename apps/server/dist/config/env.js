@@ -34,6 +34,7 @@ const envSchema = zod_1.z.object({
     ENCRYPTION_KEY: zod_1.z.string().length(64),
     RAZORPAY_KEY_ID: zod_1.z.string(),
     RAZORPAY_KEY_SECRET: zod_1.z.string(),
+    RAZORPAY_WEBHOOK_SECRET: zod_1.z.string().optional(),
     FRONTEND_URL: zod_1.z.string().url(),
     ADMIN_EMAIL: zod_1.z.string().email().optional(),
     ADMIN_PASSWORD: zod_1.z.string().optional(),

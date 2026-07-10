@@ -22,6 +22,7 @@ import courseRouter from './modules/course/course.router'
 import lessonRouter from './modules/lesson/lesson.router'
 import enrollmentRouter from './modules/enrollment/enrollment.router'
 import paymentRouter from './modules/payment/payment.router'
+import * as paymentController from './modules/payment/payment.controller'
 import progressRouter from './modules/progress/progress.router'
 import adminRouter from './modules/admin/admin.router'
 import notificationRouter from './modules/notification/notification.router'
@@ -31,6 +32,7 @@ import discussionRouter from './modules/discussion/discussion.router'
 import couponRouter from './modules/coupon/coupon.router'
 import streakRouter from './modules/streak/streak.router'
 import certificateRouter from './modules/certificate/certificate.router'
+import analyticsRouter from './modules/analytics/analytics.router'
 
 const app = express()
 
@@ -111,10 +113,10 @@ app.use(cors({
 
 app.use(compression())
 app.use(morgan('dev'))
+app.post('/api/payments/webhook', express.raw({ type: 'application/json' }), ...paymentController.webhook)
 app.use(express.json({ limit: '10mb' }))
 app.use(cookieParser())
 
-// Apply Global Encryption Middleware BEFORE controllers but AFTER body parsing
 app.use(globalEncryptionMiddleware)
 
 app.use('/api', apiLimiter)
@@ -148,9 +150,6 @@ app.use('/api/videos', videoRouter)
 app.use('/api/notes', noteRouter)
 app.use('/api/discussions', discussionRouter)
 app.use('/api/coupons', couponRouter)
-
-import analyticsRouter from './modules/analytics/analytics.router'
-
 app.use('/api/analytics', analyticsRouter)
 app.use('/api/streak', streakRouter)
 app.use('/api/certificates', certificateRouter)

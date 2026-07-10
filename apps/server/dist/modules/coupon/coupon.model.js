@@ -60,5 +60,6 @@ const couponUsageSchema = new mongoose_1.Schema({
 couponUsageSchema.index({ couponId: 1 });
 couponUsageSchema.index({ userId: 1 });
 couponUsageSchema.index({ courseId: 1 });
+couponUsageSchema.index({ paymentId: 1 }, { unique: true });
 exports.Coupon = mongoose_1.default.model('Coupon', couponSchema);
 exports.CouponUsage = mongoose_1.default.model('CouponUsage', couponUsageSchema);

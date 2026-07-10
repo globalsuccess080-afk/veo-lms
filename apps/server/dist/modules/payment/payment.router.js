@@ -38,7 +38,6 @@ const ctrl = __importStar(require("./payment.controller"));
 const rateLimiter_1 = require("../../middleware/rateLimiter");
 const router = (0, express_1.Router)();
 router.post('/create-order', rateLimiter_1.paymentLimiter, ...ctrl.createOrder);
-router.post('/verify', rateLimiter_1.paymentLimiter, ...ctrl.verify);
-router.post('/confirm-mock', rateLimiter_1.paymentLimiter, ...ctrl.confirmMock);
+router.get('/status/:orderId', ...ctrl.status);
 router.get('/history', ...ctrl.history);
 exports.default = router;

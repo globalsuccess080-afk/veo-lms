@@ -73,10 +73,8 @@ export const createOrderSchema = z.object({
   couponCode: z.string().optional()
 })
 
-export const verifyPaymentSchema = z.object({
-  razorpayOrderId: z.string(),
-  razorpayPaymentId: z.string(),
-  razorpaySignature: z.string()
+export const paymentStatusParamsSchema = z.object({
+  orderId: z.string().min(1)
 })
 
 export const updateProgressSchema = z.object({

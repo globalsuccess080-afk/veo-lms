@@ -10,6 +10,7 @@ import { queryClient } from './lib/queryClient'
 import { initTheme } from './store/themeStore'
 import { AppBootstrap } from './components/AppBootstrap'
 import { SocketProvider } from './providers/SocketProvider'
+import { PWAUpdatePrompt } from './components/PWAUpdatePrompt'
 import './styles/globals.css'
 
 initTheme()
@@ -25,6 +26,7 @@ createRoot(document.getElementById('root')!).render(
       <ThemeToaster />
       <AppAlert />
       <CustomScrollbar />
+      <PWAUpdatePrompt />
     </QueryClientProvider>
   </StrictMode>
 )

@@ -1,5 +1,4 @@
 import { Link, NavLink } from 'react-router-dom'
-import { GraduationCap } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../../store/authStore'
 import { ThemeSwitcher } from '../shared/ThemeSwitcher'
@@ -32,9 +31,9 @@ export function Navbar() {
               <motion.div 
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-hover text-primary-fg grid place-items-center shadow-soft"
+                className="w-8 h-8 rounded-lg bg-white grid place-items-center shadow-soft overflow-hidden"
               >
-                <GraduationCap size={18} strokeWidth={2.2} />
+                <img src="/logo.png" alt="VeoLMS" className="w-full h-full object-contain" />
               </motion.div>
               <span className="font-bold tracking-tight text-fg group-hover:text-primary transition-colors">VeoLMS</span>
             </Link>

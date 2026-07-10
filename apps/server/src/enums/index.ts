@@ -10,7 +10,7 @@ export type VideoStatus = (typeof VIDEO_STATUSES)[number]
 export const VIDEO_QUALITIES = ['360p', '480p', '720p', '1080p'] as const
 export type VideoQuality = (typeof VIDEO_QUALITIES)[number]
 
-export const PAYMENT_STATUSES = ['created', 'paid', 'failed', 'refunded'] as const
+export const PAYMENT_STATUSES = ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED', 'created', 'paid', 'failed', 'refunded'] as const
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number]
 
 export const NOTIFICATION_TYPES = [

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.announcementSchema = exports.updateProgressSchema = exports.verifyPaymentSchema = exports.createOrderSchema = exports.updateLessonSchema = exports.createLessonSchema = exports.createSectionSchema = exports.updateCourseSchema = exports.createCourseSchema = exports.resetPasswordSchema = exports.forgotPasswordSchema = exports.loginSchema = exports.registerSchema = void 0;
+exports.announcementSchema = exports.updateProgressSchema = exports.paymentStatusParamsSchema = exports.createOrderSchema = exports.updateLessonSchema = exports.createLessonSchema = exports.createSectionSchema = exports.updateCourseSchema = exports.createCourseSchema = exports.resetPasswordSchema = exports.forgotPasswordSchema = exports.loginSchema = exports.registerSchema = void 0;
 const zod_1 = require("zod");
 exports.registerSchema = zod_1.z.object({
     name: zod_1.z.string().min(2).max(100),
@@ -65,10 +65,8 @@ exports.createOrderSchema = zod_1.z.object({
     courseId: zod_1.z.string().min(1),
     couponCode: zod_1.z.string().optional()
 });
-exports.verifyPaymentSchema = zod_1.z.object({
-    razorpayOrderId: zod_1.z.string(),
-    razorpayPaymentId: zod_1.z.string(),
-    razorpaySignature: zod_1.z.string()
+exports.paymentStatusParamsSchema = zod_1.z.object({
+    orderId: zod_1.z.string().min(1)
 });
 exports.updateProgressSchema = zod_1.z.object({
     courseId: zod_1.z.string(),

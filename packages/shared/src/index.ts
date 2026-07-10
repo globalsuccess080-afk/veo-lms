@@ -8,7 +8,7 @@ export {
   createLessonSchema,
   updateLessonSchema,
   createOrderSchema,
-  verifyPaymentSchema,
+  paymentStatusParamsSchema,
   updateProgressSchema,
   announcementSchema
 } from './schemas'

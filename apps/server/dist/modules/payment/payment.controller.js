@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.history = exports.confirmMock = exports.verify = exports.createOrder = void 0;
+exports.history = exports.webhook = exports.status = exports.createOrder = void 0;
 const shared_1 = require("@veolms/shared");
 const paymentService = __importStar(require("./payment.service"));
 const asyncHandler_1 = require("../../utils/asyncHandler");
@@ -50,22 +50,21 @@ exports.createOrder = [
         (0, apiResponse_1.sendSuccess)(res, order);
     })
 ];
-exports.verify = [
+exports.status = [
     auth_middleware_1.authenticate,
     (0, role_middleware_1.requireRole)('student', 'admin'),
-    (0, validate_middleware_1.validate)(shared_1.verifyPaymentSchema),
+    (0, validate_middleware_1.validate)(shared_1.paymentStatusParamsSchema, 'params'),
     (0, asyncHandler_1.asyncHandler)(async (req, res) => {
-        const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
-        const result = await paymentService.verifyPayment(req.user.id, razorpayOrderId, razorpayPaymentId, razorpaySignature);
-        (0, apiResponse_1.sendSuccess)(res, result, 'Payment verified');
+        const { orderId } = req.params;
+        const result = await paymentService.getPaymentStatus(req.user.id, orderId);
+        (0, apiResponse_1.sendSuccess)(res, result);
     })
 ];
-exports.confirmMock = [
-    auth_middleware_1.authenticate,
-    (0, role_middleware_1.requireRole)('student', 'admin'),
+exports.webhook = [
     (0, asyncHandler_1.asyncHandler)(async (req, res) => {
-        const result = await paymentService.confirmMockPayment(req.user.id, req.body.orderId);
-        (0, apiResponse_1.sendSuccess)(res, result, 'Payment completed (test mode)');
+        const signature = req.headers['x-razorpay-signature'];
+        const result = await paymentService.handleRazorpayWebhook(req.body, Array.isArray(signature) ? signature[0] : signature);
+        (0, apiResponse_1.sendSuccess)(res, result);
     })
 ];
 exports.history = [

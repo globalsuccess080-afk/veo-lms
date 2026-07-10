@@ -31,6 +31,7 @@ const couponUsageSchema = new Schema<ICouponUsage>({
 couponUsageSchema.index({ couponId: 1 })
 couponUsageSchema.index({ userId: 1 })
 couponUsageSchema.index({ courseId: 1 })
+couponUsageSchema.index({ paymentId: 1 }, { unique: true })
 
 export const Coupon = mongoose.model<ICoupon>('Coupon', couponSchema)
 export const CouponUsage = mongoose.model<ICouponUsage>('CouponUsage', couponUsageSchema)

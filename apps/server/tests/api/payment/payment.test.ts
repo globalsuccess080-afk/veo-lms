@@ -3,7 +3,7 @@ import request from 'supertest';
 import app from '../../../src/app';
 import { createStudent, login, createAdmin, createCourse } from '../../setup/helpers';
 
-describe('Payment Verification', () => {
+describe('Payment Status', () => {
   async function createOrderForCourse(token: string, courseId: string) {
     const orderRes = await request(app)
       .post('/api/payments/create-order')
@@ -14,7 +14,7 @@ describe('Payment Verification', () => {
     return orderRes.body.data.orderId as string;
   }
 
-  it('should process a valid payment', async () => {
+  it('should return completed status for a mock payment order', async () => {
     await createStudent('pay@test.com');
     const { token } = await login('pay@test.com', 'password123');
 
@@ -23,62 +23,44 @@ describe('Payment Verification', () => {
     const orderId = await createOrderForCourse(token, course._id.toString());
 
     const res = await request(app)
-      .post('/api/payments/verify')
+      .get(`/api/payments/status/${orderId}`)
       .set('Authorization', `Bearer ${token}`)
-      .send({
-        razorpayOrderId: orderId,
-        razorpayPaymentId: 'pay_mock_123',
-        razorpaySignature: 'mock_signature',
-      });
 
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
+    expect(res.body.data.status).toBe('COMPLETED');
   });
 
-  it('should reject a duplicate payment', async () => {
+  it('should reject creating another paid order for the same course', async () => {
     await createStudent('pay-dup@test.com');
     const { token } = await login('pay-dup@test.com', 'password123');
     const admin = await createAdmin('admin-pay2@test.com');
     const course = await createCourse(admin._id.toString());
-    const orderId = await createOrderForCourse(token, course._id.toString());
-
-    const payload = {
-      razorpayOrderId: orderId,
-      razorpayPaymentId: 'pay_mock_dup',
-      razorpaySignature: 'mock_signature',
-    };
-
-    await request(app)
-      .post('/api/payments/verify')
-      .set('Authorization', `Bearer ${token}`)
-      .send(payload);
+    await createOrderForCourse(token, course._id.toString());
 
     const res = await request(app)
-      .post('/api/payments/verify')
+      .post('/api/payments/create-order')
       .set('Authorization', `Bearer ${token}`)
-      .send(payload);
+      .send({ courseId: course._id.toString() });
 
     expect(res.status).toBe(409);
     expect(res.body.success).toBe(false);
   });
 
-  it('should reject an invalid payment signature', async () => {
+  it('should reject payment status lookup from another user', async () => {
     await createStudent('pay-inv@test.com');
     const { token } = await login('pay-inv@test.com', 'password123');
+    await createStudent('pay-other@test.com');
+    const other = await login('pay-other@test.com', 'password123');
     const admin = await createAdmin('admin-pay3@test.com');
     const course = await createCourse(admin._id.toString());
     const orderId = await createOrderForCourse(token, course._id.toString());
 
     const res = await request(app)
-      .post('/api/payments/verify')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        razorpayOrderId: orderId,
-        razorpayPaymentId: 'pay_mock_123',
-        razorpaySignature: 'invalid_signature',
-      });
+      .get(`/api/payments/status/${orderId}`)
+      .set('Authorization', `Bearer ${other.token}`);
 
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(403);
     expect(res.body.success).toBe(false);
   });
 });

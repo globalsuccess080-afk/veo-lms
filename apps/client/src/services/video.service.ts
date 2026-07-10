@@ -8,7 +8,9 @@ export async function uploadVideo(file: File, lessonId: string | undefined, onPr
   const { data } = await api.post('/videos/upload', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
     onUploadProgress: (e) => {
-      if (e.total && onProgress) onProgress(Math.round((e.loaded / e.total) * 100))
+      if (!onProgress) return
+      if (e.total) onProgress(Math.round((e.loaded / e.total) * 100))
+      else if (e.loaded > 0) onProgress(5)
     }
   })
   return data.data as { jobId: string; status: string; lessonId: string }

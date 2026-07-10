@@ -1,4 +1,37 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -25,6 +58,7 @@ const course_router_1 = __importDefault(require("./modules/course/course.router"
 const lesson_router_1 = __importDefault(require("./modules/lesson/lesson.router"));
 const enrollment_router_1 = __importDefault(require("./modules/enrollment/enrollment.router"));
 const payment_router_1 = __importDefault(require("./modules/payment/payment.router"));
+const paymentController = __importStar(require("./modules/payment/payment.controller"));
 const progress_router_1 = __importDefault(require("./modules/progress/progress.router"));
 const admin_router_1 = __importDefault(require("./modules/admin/admin.router"));
 const notification_router_1 = __importDefault(require("./modules/notification/notification.router"));
@@ -34,6 +68,7 @@ const discussion_router_1 = __importDefault(require("./modules/discussion/discus
 const coupon_router_1 = __importDefault(require("./modules/coupon/coupon.router"));
 const streak_router_1 = __importDefault(require("./modules/streak/streak.router"));
 const certificate_router_1 = __importDefault(require("./modules/certificate/certificate.router"));
+const analytics_router_1 = __importDefault(require("./modules/analytics/analytics.router"));
 const app = (0, express_1.default)();
 // Production runs behind a single reverse proxy/load balancer, so trust one hop
 // for correct client IP detection in express-rate-limit and secure cookies.
@@ -104,9 +139,9 @@ app.use((0, cors_1.default)({
 }));
 app.use((0, compression_1.default)());
 app.use((0, morgan_1.default)('dev'));
+app.post('/api/payments/webhook', express_1.default.raw({ type: 'application/json' }), ...paymentController.webhook);
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use((0, cookie_parser_1.default)());
-// Apply Global Encryption Middleware BEFORE controllers but AFTER body parsing
 app.use(encryption_middleware_1.globalEncryptionMiddleware);
 app.use('/api', rateLimiter_1.apiLimiter);
 app.get('/api/docs.json', (req, res) => {
@@ -134,7 +169,6 @@ app.use('/api/videos', video_router_1.default);
 app.use('/api/notes', note_router_1.default);
 app.use('/api/discussions', discussion_router_1.default);
 app.use('/api/coupons', coupon_router_1.default);
-const analytics_router_1 = __importDefault(require("./modules/analytics/analytics.router"));
 app.use('/api/analytics', analytics_router_1.default);
 app.use('/api/streak', streak_router_1.default);
 app.use('/api/certificates', certificate_router_1.default);

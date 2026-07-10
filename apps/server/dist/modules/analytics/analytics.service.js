@@ -12,6 +12,7 @@ const payment_model_1 = require("../payment/payment.model");
 const progress_model_1 = require("../progress/progress.model");
 const coupon_model_1 = require("../coupon/coupon.model");
 const redis_1 = require("../../config/redis");
+const completedPaymentStatuses = ['COMPLETED', 'paid'];
 async function getDashboard(userId, range) {
     const cacheKey = `analytics:tenant:${userId}:${range}`;
     // Attempt cache hit
@@ -46,7 +47,7 @@ async function getDashboard(userId, range) {
     const [revenueData, studentsData, coursesData, engagementData, revenueTrends, revenueByCategory, revenueByCoupon, studentGrowth, announcementsCount, topCourses, couponStats, lessonAnalytics] = await Promise.all([
         // Revenue (Total, This Range)
         payment_model_1.Payment.aggregate([
-            { $match: { status: 'paid' } },
+            { $match: { status: { $in: completedPaymentStatuses } } },
             { $group: {
                     _id: null,
                     total: { $sum: '$amount' },
@@ -82,7 +83,7 @@ async function getDashboard(userId, range) {
         ]),
         // Revenue Trends
         payment_model_1.Payment.aggregate([
-            { $match: { status: 'paid', createdAt: { $gte: startDate } } },
+            { $match: { status: { $in: completedPaymentStatuses }, createdAt: { $gte: startDate } } },
             { $group: {
                     _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
                     revenue: { $sum: '$amount' }
@@ -91,7 +92,7 @@ async function getDashboard(userId, range) {
         ]),
         // Revenue Breakdown: Category
         payment_model_1.Payment.aggregate([
-            { $match: { status: 'paid', createdAt: { $gte: startDate } } },
+            { $match: { status: { $in: completedPaymentStatuses }, createdAt: { $gte: startDate } } },
             { $lookup: { from: 'courses', localField: 'courseId', foreignField: '_id', as: 'course' } },
             { $unwind: '$course' },
             { $group: { _id: '$course.category', revenue: { $sum: '$amount' } } },
@@ -99,7 +100,7 @@ async function getDashboard(userId, range) {
         ]),
         // Revenue Breakdown: Coupon
         payment_model_1.Payment.aggregate([
-            { $match: { status: 'paid', createdAt: { $gte: startDate }, couponCode: { $ne: null } } },
+            { $match: { status: { $in: completedPaymentStatuses }, createdAt: { $gte: startDate }, couponCode: { $ne: null } } },
             { $group: { _id: '$couponCode', revenue: { $sum: '$amount' }, usageCount: { $sum: 1 } } },
             { $sort: { revenue: -1 } },
             { $limit: 10 }
@@ -125,13 +126,13 @@ async function getDashboard(userId, range) {
                     revenue: {
                         $sum: {
                             $map: {
-                                input: { $filter: { input: '$payments', as: 'p', cond: { $eq: ['$$p.status', 'paid'] } } },
+                                input: { $filter: { input: '$payments', as: 'p', cond: { $in: ['$$p.status', completedPaymentStatuses] } } },
                                 as: 'paidP',
                                 in: '$$paidP.amount'
                             }
                         }
                     },
-                    purchased: { $size: { $filter: { input: '$payments', as: 'p', cond: { $eq: ['$$p.status', 'paid'] } } } },
+                    purchased: { $size: { $filter: { input: '$payments', as: 'p', cond: { $in: ['$$p.status', completedPaymentStatuses] } } } },
                     started: { $size: { $filter: { input: '$enrollments', as: 'e', cond: { $gt: ['$$e.progress', 0] } } } },
                     completed: { $size: { $filter: { input: '$enrollments', as: 'e', cond: { $eq: ['$$e.progress', 100] } } } },
                     watchTimeSeconds: { $sum: '$progresses.watchedSeconds' }

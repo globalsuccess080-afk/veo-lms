@@ -38,10 +38,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PAYMENTS_MOCK = void 0;
 exports.createOrder = createOrder;
-exports.confirmMockPayment = confirmMockPayment;
-exports.verifyPayment = verifyPayment;
+exports.handleRazorpayWebhook = handleRazorpayWebhook;
+exports.getPaymentStatus = getPaymentStatus;
 exports.getPaymentHistory = getPaymentHistory;
 const crypto_1 = __importDefault(require("crypto"));
+const mongoose_1 = __importDefault(require("mongoose"));
 const razorpay_1 = __importDefault(require("razorpay"));
 const env_1 = require("../../config/env");
 const payment_model_1 = require("./payment.model");
@@ -59,44 +60,57 @@ exports.PAYMENTS_MOCK = !env_1.env.RAZORPAY_KEY_ID ||
 const razorpay = exports.PAYMENTS_MOCK
     ? null
     : new razorpay_1.default({ key_id: env_1.env.RAZORPAY_KEY_ID, key_secret: env_1.env.RAZORPAY_KEY_SECRET });
-function verifySignature(orderId, paymentId, signature) {
-    if (exports.PAYMENTS_MOCK && signature === 'mock_signature')
-        return true;
-    const body = `${orderId}|${paymentId}`;
-    const expected = crypto_1.default.createHmac('sha256', env_1.env.RAZORPAY_KEY_SECRET).update(body).digest('hex');
+function normalizeStatus(status) {
+    if (status === 'paid')
+        return 'COMPLETED';
+    if (status === 'created')
+        return 'PENDING';
+    if (status === 'failed')
+        return 'FAILED';
+    if (status === 'refunded')
+        return 'REFUNDED';
+    return status;
+}
+function verifyWebhookSignature(rawBody, signature) {
+    if (!env_1.env.RAZORPAY_WEBHOOK_SECRET)
+        throw new apiError_1.ApiError(500, 'Razorpay webhook secret is not configured');
+    if (!signature)
+        throw new apiError_1.ApiError(400, 'Missing Razorpay webhook signature');
+    const expected = crypto_1.default.createHmac('sha256', env_1.env.RAZORPAY_WEBHOOK_SECRET).update(rawBody).digest('hex');
     const expectedBuffer = Buffer.from(expected, 'hex');
     const signatureBuffer = Buffer.from(signature, 'hex');
     if (expectedBuffer.length !== signatureBuffer.length)
         return false;
     return crypto_1.default.timingSafeEqual(expectedBuffer, signatureBuffer);
 }
-async function finalizeEnrollment(userId, payment) {
-    const course = await course_model_1.Course.findById(payment.courseId);
-    await (0, enrollment_service_1.createEnrollment)(userId, payment.courseId.toString(), payment._id.toString());
+async function finalizeEnrollment(userId, payment, session) {
+    const course = await course_model_1.Course.findById(payment.courseId).session(session || null);
+    await (0, enrollment_service_1.createEnrollment)(userId, payment.courseId.toString(), payment._id.toString(), session);
     if (payment.couponId) {
-        const coupon = await coupon_model_1.Coupon.findById(payment.couponId);
-        if (coupon) {
-            coupon.usedCount += 1;
-            await coupon.save();
-            await coupon_model_1.CouponUsage.create({
-                couponId: coupon._id,
-                userId,
-                courseId: payment.courseId,
-                paymentId: payment._id,
-                couponCode: payment.couponCode,
-                discountAmount: payment.discountAmount
-            });
+        const existingUsage = await coupon_model_1.CouponUsage.findOne({ paymentId: payment._id }).session(session || null);
+        if (!existingUsage) {
+            const coupon = await coupon_model_1.Coupon.findByIdAndUpdate(payment.couponId, { $inc: { usedCount: 1 } }, { new: true, session });
+            if (coupon) {
+                await coupon_model_1.CouponUsage.create([{
+                        couponId: coupon._id,
+                        userId,
+                        courseId: payment.courseId,
+                        paymentId: payment._id,
+                        couponCode: payment.couponCode,
+                        discountAmount: payment.discountAmount
+                    }], { session });
+            }
         }
     }
-    await notification_model_1.Notification.create({
-        userId,
-        type: 'enrollment',
-        title: 'Enrollment Successful',
-        message: `You are now enrolled in ${course?.title}`,
-        link: `/learn/${course?.slug}`
-    });
+    await notification_model_1.Notification.create([{
+            userId,
+            type: 'enrollment',
+            title: 'Enrollment Successful',
+            message: `You are now enrolled in ${course?.title}`,
+            link: `/learn/${course?.slug}`
+        }], { session });
     const { User } = await Promise.resolve().then(() => __importStar(require('../user/user.model')));
-    const user = await User.findById(userId);
+    const user = await User.findById(userId).session(session || null);
     if (user && course && payment.amount > 0) {
         const { emailQueue } = await Promise.resolve().then(() => __importStar(require('../email/email.queue')));
         const { generatePaymentEmail } = await Promise.resolve().then(() => __importStar(require('../email/templates')));
@@ -115,7 +129,7 @@ async function createOrder(userId, courseId, couponCode) {
         throw new apiError_1.ApiError(404, 'Course not found');
     if (!course.isPublished)
         throw new apiError_1.ApiError(400, 'Course not available');
-    const existing = await payment_model_1.Payment.findOne({ userId, courseId, status: 'paid' });
+    const existing = await payment_model_1.Payment.findOne({ userId, courseId, status: { $in: ['COMPLETED', 'paid'] } });
     if (existing)
         throw new apiError_1.ApiError(409, 'Already enrolled in this course');
     let originalAmount = course.price;
@@ -130,7 +144,7 @@ async function createOrder(userId, courseId, couponCode) {
         couponId = validResult.couponId;
         appliedCouponCode = couponCode.toUpperCase().trim();
     }
-    const amount = Math.round(finalAmount * 100); // Razorpay amount in paise
+    const amount = Math.round(finalAmount * 100);
     logger_1.logger.debug(`[createOrder] originalAmount: ${originalAmount}, finalAmount: ${finalAmount}, amount (paise): ${amount}`);
     let orderId = `mock_order_${crypto_1.default.randomBytes(8).toString('hex')}`;
     if (!exports.PAYMENTS_MOCK) {
@@ -164,10 +178,9 @@ async function createOrder(userId, courseId, couponCode) {
         finalAmount,
         couponId,
         couponCode: appliedCouponCode,
-        status: amount > 0 ? 'created' : 'paid',
+        status: amount > 0 ? 'PENDING' : 'COMPLETED',
         metadata: { courseName: course.title, coursePrice: course.price }
     });
-    // If free (100% discount), automatically enroll
     if (amount === 0) {
         const payment = await payment_model_1.Payment.findOne({ razorpayOrderId: orderId });
         const result = await finalizeEnrollment(userId, payment);
@@ -175,6 +188,19 @@ async function createOrder(userId, courseId, couponCode) {
             orderId, amount, currency: 'INR', keyId: env_1.env.RAZORPAY_KEY_ID,
             courseName: course.title, mock: false, free: true, courseSlug: result.courseSlug
         };
+    }
+    if (exports.PAYMENTS_MOCK) {
+        const payment = await payment_model_1.Payment.findOne({ razorpayOrderId: orderId });
+        if (payment) {
+            payment.razorpayPaymentId = `mock_pay_${crypto_1.default.randomBytes(8).toString('hex')}`;
+            payment.status = 'COMPLETED';
+            await payment.save();
+            const result = await finalizeEnrollment(userId, payment);
+            return {
+                orderId, amount, currency: 'INR', keyId: env_1.env.RAZORPAY_KEY_ID,
+                courseName: course.title, mock: true, courseSlug: result.courseSlug
+            };
+        }
     }
     return {
         orderId,
@@ -185,51 +211,96 @@ async function createOrder(userId, courseId, couponCode) {
         mock: exports.PAYMENTS_MOCK
     };
 }
-async function confirmMockPayment(userId, orderId) {
-    if (!exports.PAYMENTS_MOCK)
-        throw new apiError_1.ApiError(400, 'Mock payments are disabled');
-    const payment = await payment_model_1.Payment.findOne({ razorpayOrderId: orderId });
-    if (!payment)
-        throw new apiError_1.ApiError(404, 'Payment not found');
-    if (payment.userId.toString() !== userId)
-        throw new apiError_1.ApiError(403, 'Unauthorized');
-    if (payment.status === 'paid')
-        throw new apiError_1.ApiError(409, 'Payment already processed');
-    payment.razorpayPaymentId = `mock_pay_${crypto_1.default.randomBytes(8).toString('hex')}`;
-    payment.status = 'paid';
-    await payment.save();
-    return finalizeEnrollment(userId, payment);
-}
-async function verifyPayment(userId, orderId, paymentId, signature) {
-    if (!verifySignature(orderId, paymentId, signature)) {
-        throw new apiError_1.ApiError(400, 'Invalid payment signature');
-    }
-    const payment = await payment_model_1.Payment.findOne({ razorpayOrderId: orderId });
-    if (!payment)
-        throw new apiError_1.ApiError(404, 'Payment not found');
-    if (payment.status === 'paid')
-        throw new apiError_1.ApiError(409, 'Payment already processed');
-    if (payment.userId.toString() !== userId)
-        throw new apiError_1.ApiError(403, 'Unauthorized');
-    // Amount Validation (verify payment amount matches order amount)
-    if (!exports.PAYMENTS_MOCK && razorpay) {
-        try {
-            const rzpPayment = await razorpay.payments.fetch(paymentId);
-            if (!rzpPayment || rzpPayment.amount !== payment.amount || rzpPayment.status !== 'captured') {
-                throw new apiError_1.ApiError(400, 'Payment amount mismatch or payment not captured');
+async function completeCapturedPayment(orderId, paymentId) {
+    if (!razorpay)
+        throw new apiError_1.ApiError(400, 'Razorpay is not configured');
+    const gatewayPayment = await razorpay.payments.fetch(paymentId);
+    if (!gatewayPayment || gatewayPayment.status !== 'captured')
+        throw new apiError_1.ApiError(400, 'Payment is not captured');
+    if (gatewayPayment.order_id !== orderId)
+        throw new apiError_1.ApiError(400, 'Payment order mismatch');
+    const session = await mongoose_1.default.startSession();
+    try {
+        let result = {};
+        await session.withTransaction(async () => {
+            const payment = await payment_model_1.Payment.findOne({ razorpayOrderId: orderId }).session(session);
+            if (!payment)
+                throw new apiError_1.ApiError(404, 'Payment not found');
+            const status = normalizeStatus(payment.status);
+            if (status === 'COMPLETED') {
+                const course = await course_model_1.Course.findById(payment.courseId).session(session);
+                result = { courseSlug: course?.slug };
+                return;
             }
-        }
-        catch (error) {
-            if (error instanceof apiError_1.ApiError)
-                throw error;
-            throw new apiError_1.ApiError(500, 'Failed to verify payment with Razorpay');
-        }
+            if (gatewayPayment.amount !== payment.amount || gatewayPayment.currency !== payment.currency) {
+                payment.status = 'FAILED';
+                await payment.save({ session });
+                throw new apiError_1.ApiError(400, 'Payment amount or currency mismatch');
+            }
+            payment.razorpayPaymentId = paymentId;
+            payment.status = 'PROCESSING';
+            await payment.save({ session });
+            result = await finalizeEnrollment(payment.userId.toString(), payment, session);
+            payment.status = 'COMPLETED';
+            await payment.save({ session });
+        });
+        return result;
     }
-    payment.razorpayPaymentId = paymentId;
-    payment.razorpaySignature = signature;
-    payment.status = 'paid';
+    finally {
+        await session.endSession();
+    }
+}
+async function markPaymentFailed(orderId, paymentId) {
+    const payment = await payment_model_1.Payment.findOne({ razorpayOrderId: orderId });
+    if (!payment)
+        return;
+    if (normalizeStatus(payment.status) === 'COMPLETED')
+        return;
+    if (paymentId)
+        payment.razorpayPaymentId = paymentId;
+    payment.status = 'FAILED';
     await payment.save();
-    return finalizeEnrollment(userId, payment);
+}
+async function markPaymentRefunded(orderId) {
+    const payment = await payment_model_1.Payment.findOne({ razorpayOrderId: orderId });
+    if (!payment)
+        return;
+    payment.status = 'REFUNDED';
+    await payment.save();
+}
+async function handleRazorpayWebhook(rawBody, signature) {
+    if (!verifyWebhookSignature(rawBody, signature))
+        throw new apiError_1.ApiError(400, 'Invalid Razorpay webhook signature');
+    const event = JSON.parse(rawBody.toString('utf8'));
+    const paymentEntity = event.payload?.payment?.entity;
+    const refundEntity = event.payload?.refund?.entity;
+    if (event.event === 'payment.captured' && paymentEntity?.id && paymentEntity?.order_id) {
+        await completeCapturedPayment(paymentEntity.order_id, paymentEntity.id);
+    }
+    if (event.event === 'payment.failed' && paymentEntity?.order_id) {
+        await markPaymentFailed(paymentEntity.order_id, paymentEntity.id);
+    }
+    if (event.event === 'refund.processed' && refundEntity?.payment_id && razorpay) {
+        const gatewayPayment = await razorpay.payments.fetch(refundEntity.payment_id);
+        if (gatewayPayment?.order_id)
+            await markPaymentRefunded(gatewayPayment.order_id);
+    }
+    return { received: true };
+}
+async function getPaymentStatus(userId, orderId) {
+    const payment = await payment_model_1.Payment.findOne({ razorpayOrderId: orderId });
+    if (!payment)
+        throw new apiError_1.ApiError(404, 'Payment not found');
+    if (payment.userId.toString() !== userId)
+        throw new apiError_1.ApiError(403, 'Unauthorized');
+    const course = normalizeStatus(payment.status) === 'COMPLETED'
+        ? await course_model_1.Course.findById(payment.courseId)
+        : null;
+    return {
+        orderId,
+        status: normalizeStatus(payment.status),
+        courseSlug: course?.slug || null
+    };
 }
 async function getPaymentHistory(userId) {
     const payments = await payment_model_1.Payment.find({ userId }).sort({ createdAt: -1 }).lean();
@@ -237,7 +308,7 @@ async function getPaymentHistory(userId) {
         id: p._id.toString(),
         amount: p.amount,
         currency: p.currency,
-        status: p.status,
+        status: normalizeStatus(p.status),
         courseName: p.metadata.courseName,
         createdAt: p.createdAt.toISOString()
     }));

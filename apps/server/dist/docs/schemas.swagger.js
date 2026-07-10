@@ -74,7 +74,7 @@ exports.schemas = {
             user: { type: 'string' },
             course: { type: 'string' },
             amount: { type: 'number' },
-            status: { type: 'string', enum: ['pending', 'successful', 'failed'] },
+            status: { type: 'string', enum: ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED'] },
             razorpayOrderId: { type: 'string' },
             razorpayPaymentId: { type: 'string' },
         },

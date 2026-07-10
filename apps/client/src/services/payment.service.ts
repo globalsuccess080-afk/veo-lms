@@ -5,12 +5,11 @@ export async function createOrder(courseId: string, couponCode?: string) {
   return data.data as { orderId: string; amount: number; currency: string; keyId: string; courseName: string; mock: boolean; free?: boolean; courseSlug?: string }
 }
 
-export async function verifyPayment(body: { razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) {
-  const { data } = await api.post('/payments/verify', body)
-  return data.data as { courseSlug: string }
-}
-
-export async function confirmMockPayment(orderId: string) {
-  const { data } = await api.post('/payments/confirm-mock', { orderId })
-  return data.data as { courseSlug: string }
+export async function getPaymentStatus(orderId: string) {
+  const { data } = await api.get(`/payments/status/${orderId}`)
+  return data.data as {
+    orderId: string
+    status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
+    courseSlug: string | null
+  }
 }

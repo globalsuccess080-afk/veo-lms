@@ -81,9 +81,9 @@ export function AdminLayout() {
           <div className="flex items-center gap-3">
             <motion.div 
               whileHover={{ scale: 1.05 }}
-              className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary-hover text-primary-fg flex items-center justify-center shadow-soft shrink-0"
+              className="w-9 h-9 rounded-xl bg-white flex items-center justify-center shadow-soft shrink-0 overflow-hidden"
             >
-              <GraduationCap size={20} strokeWidth={2.2} />
+              <img src="/logo.png" alt="VeoLMS" className="w-full h-full object-contain" />
             </motion.div>
             <AnimatePresence>
               {(!collapsed || isMobile) && (

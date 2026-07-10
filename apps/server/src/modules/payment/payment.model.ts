@@ -38,6 +38,7 @@ paymentSchema.methods.getDecryptedSignature = function () {
 
 paymentSchema.index({ userId: 1, createdAt: -1 })
 paymentSchema.index({ status: 1 })
+paymentSchema.index({ razorpayPaymentId: 1 }, { sparse: true })
 
 export const Payment = mongoose.model<IPayment>('Payment', paymentSchema)
 export type { IPayment } from './payment.types'

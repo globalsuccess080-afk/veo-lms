@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { GraduationCap, BookOpen, Users, Zap, ShieldCheck } from 'lucide-react'
+import { BookOpen, Users, Zap, ShieldCheck } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { ThemeSwitcher } from '../shared/ThemeSwitcher'
 
@@ -45,10 +45,10 @@ export function AuthShell({ title, subtitle, children, footer, highlight, badge 
             <motion.div
               whileHover={{ scale: 1.06 }}
               whileTap={{ scale: 0.94 }}
-              className="w-9 h-9 rounded-xl flex items-center justify-center text-primary"
-              style={{ background: 'var(--primary-subtle)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
+              className="w-9 h-9 rounded-xl bg-white flex items-center justify-center overflow-hidden"
+              style={{ border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
             >
-              <GraduationCap size={18} strokeWidth={2} />
+              <img src="/logo.png" alt="VeoLMS" className="w-full h-full object-contain" />
             </motion.div>
             <span className="font-bold text-[1.1rem] tracking-tight transition-colors" style={{ color: 'var(--fg)' }}>VeoLMS</span>
           </Link>
@@ -102,8 +102,8 @@ export function AuthShell({ title, subtitle, children, footer, highlight, badge 
 
         <div className="lg:hidden flex items-center px-6 pt-6 pb-4">
           <Link to="/" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-primary" style={{ background: 'var(--primary-subtle)' }}>
-              <GraduationCap size={16} strokeWidth={2} />
+            <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center overflow-hidden">
+              <img src="/logo.png" alt="VeoLMS" className="w-full h-full object-contain" />
             </div>
             <span className="font-bold" style={{ color: 'var(--fg)' }}>VeoLMS</span>
           </Link>

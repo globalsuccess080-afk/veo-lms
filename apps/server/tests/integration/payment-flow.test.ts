@@ -16,7 +16,6 @@ describe('Payment Flow Integration', () => {
   let orderId: string;
 
   it('Should login successfully', async () => {
-    // If student credentials are not provided, this test will fail, which is expected since it needs valid data.
     const loginRes = await request(app)
       .post('/api/auth/login')
       .send({
@@ -33,7 +32,6 @@ describe('Payment Flow Integration', () => {
   });
 
   it('Should setup course for payment', async () => {
-    // We create a dummy course for the test to purchase.
     const admin = await createAdmin('admin-payment@test.com');
     const course = await createCourse(admin._id.toString());
     courseId = course._id.toString();
@@ -51,38 +49,22 @@ describe('Payment Flow Integration', () => {
 
     expect(orderRes.status).toBe(200);
     expect(orderRes.body.success).toBe(true);
-    expect(orderRes.body.data.id).toBeDefined(); // Razorpay order id
+    expect(orderRes.body.data.orderId).toBeDefined();
 
-    orderId = orderRes.body.data.id;
+    orderId = orderRes.body.data.orderId;
   });
 
-  it('Should fail payment verification with invalid signature', async () => {
+  it('Should return payment status', async () => {
     if (!cookie || !orderId) return;
 
-    const verifyRes = await request(app)
-      .post('/api/payments/verify')
+    const statusRes = await request(app)
+      .get(`/api/payments/status/${orderId}`)
       .set('Cookie', cookie)
-      .set('Authorization', `Bearer ${accessToken}`)
-      .send({
-        razorpayOrderId: orderId,
-        razorpayPaymentId: 'pay_mock_123',
-        razorpaySignature: 'invalid_signature_here'
-      });
+      .set('Authorization', `Bearer ${accessToken}`);
 
-    expect(verifyRes.status).toBe(400); // Bad Request because of invalid signature
-    expect(verifyRes.body.success).toBe(false);
-  });
-
-  it('Should verify payment using confirm-mock (test mode)', async () => {
-    if (!cookie || !orderId) return;
-    const mockRes = await request(app)
-      .post('/api/payments/confirm-mock')
-      .set('Cookie', cookie)
-      .set('Authorization', `Bearer ${accessToken}`)
-      .send({ orderId });
-
-    expect(mockRes.status).toBe(200);
-    expect(mockRes.body.success).toBe(true);
+    expect(statusRes.status).toBe(200);
+    expect(statusRes.body.success).toBe(true);
+    expect(['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REFUNDED']).toContain(statusRes.body.data.status);
   });
 
   it('Should check expected enrollment behaviour after payment', async () => {

@@ -1,4 +1,4 @@
-import { createOrderSchema, verifyPaymentSchema } from '@veolms/shared'
+import { createOrderSchema, paymentStatusParamsSchema } from '@veolms/shared'
 import * as paymentService from './payment.service'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { sendSuccess } from '../../utils/apiResponse'
@@ -17,25 +17,25 @@ export const createOrder = [
   })
 ]
 
-export const verify = [
+export const status = [
   authenticate,
   requireRole('student', 'admin'),
-  validate(verifyPaymentSchema),
+  validate(paymentStatusParamsSchema, 'params'),
   asyncHandler(async (req: AuthRequest, res) => {
-    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body
-    const result = await paymentService.verifyPayment(
-      req.user!.id, razorpayOrderId, razorpayPaymentId, razorpaySignature
-    )
-    sendSuccess(res, result, 'Payment verified')
+    const { orderId } = req.params as { orderId: string }
+    const result = await paymentService.getPaymentStatus(req.user!.id, orderId)
+    sendSuccess(res, result)
   })
 ]
 
-export const confirmMock = [
-  authenticate,
-  requireRole('student', 'admin'),
-  asyncHandler(async (req: AuthRequest, res) => {
-    const result = await paymentService.confirmMockPayment(req.user!.id, req.body.orderId)
-    sendSuccess(res, result, 'Payment completed (test mode)')
+export const webhook = [
+  asyncHandler(async (req, res) => {
+    const signature = req.headers['x-razorpay-signature']
+    const result = await paymentService.handleRazorpayWebhook(
+      req.body,
+      Array.isArray(signature) ? signature[0] : signature
+    )
+    sendSuccess(res, result)
   })
 ]
 

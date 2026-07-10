@@ -71,4 +71,5 @@ paymentSchema.methods.getDecryptedSignature = function () {
 };
 paymentSchema.index({ userId: 1, createdAt: -1 });
 paymentSchema.index({ status: 1 });
+paymentSchema.index({ razorpayPaymentId: 1 }, { sparse: true });
 exports.Payment = mongoose_1.default.model('Payment', paymentSchema);

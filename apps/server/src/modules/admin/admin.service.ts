@@ -7,13 +7,16 @@ import { ApiError } from '../../utils/apiError'
 import { buildQuery } from '../../utils/queryBuilder'
 import * as xlsx from 'xlsx'
 import fs from 'fs/promises'
+import { adminExportQueue, adminImportQueue } from './admin.queue'
+
+const completedPaymentStatuses = ['COMPLETED', 'paid']
 
 export async function getStats() {
   const [totalCourses, totalStudents, totalEnrollments, payments] = await Promise.all([
     Course.countDocuments(),
     User.countDocuments({ role: 'student' }),
     Enrollment.countDocuments(),
-    Payment.find({ status: 'paid' }).lean()
+    Payment.find({ status: { $in: completedPaymentStatuses } }).lean()
   ])
 
   const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0)
@@ -139,8 +142,6 @@ export async function sendAnnouncement(title: string, message: string, io?: { to
 
   return { sent: students.length }
 }
-
-import { adminExportQueue, adminImportQueue } from './admin.queue'
 
 export async function queueExport(type: 'courses' | 'students' | 'enrollments') {
   const job = await adminExportQueue.add('export', { type })

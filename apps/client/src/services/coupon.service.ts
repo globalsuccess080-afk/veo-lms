@@ -14,6 +14,7 @@ export interface Coupon {
   validUntil: string
   isActive: boolean
   applicableCourseIds: string[] | null
+  applicableCourses?: string[]
 }
 
 export async function validateCoupon(courseId: string, couponCode: string) {

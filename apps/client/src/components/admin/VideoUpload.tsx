@@ -55,6 +55,7 @@ function progressToStage(pct: number): string {
 
 export function VideoUpload({ lessonId, initialUrl, onUploaded, compact, confirmMessage, courseId, courseTitle, lessonTitle }: VideoUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const uploadFallbackTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const { showAlert } = useAlertStore()
 
   const [uploadPct, setUploadPct] = useState<number | null>(null)
@@ -92,13 +93,20 @@ export function VideoUpload({ lessonId, initialUrl, onUploaded, compact, confirm
   const handleFile = async (file: File) => {
     if (!file.type.startsWith('video/')) { toast.error('Please select a video file'); return }
     setFileName(file.name)
-    setUploadPct(0)
+    setUploadPct(1)
     setDone(false)
     setProcessingLessonId(null)
+    uploadFallbackTimer.current = setInterval(() => {
+      setUploadPct(current => {
+        if (current === null || current >= 92) return current
+        return Math.min(92, current + (current < 40 ? 3 : 1))
+      })
+    }, 900)
 
     try {
       const durationSeconds = await readVideoDuration(file)
-      const result = await uploadVideo(file, lessonId, setUploadPct)
+      const result = await uploadVideo(file, lessonId, pct => setUploadPct(Math.max(1, Math.min(99, pct))))
+      setUploadPct(100)
       setUploadPct(null)
       onUploaded?.('', durationSeconds)
 
@@ -118,7 +126,12 @@ export function VideoUpload({ lessonId, initialUrl, onUploaded, compact, confirm
     } catch (e) {
       const err = e as { response?: { data?: { message?: string } } }
       setUploadPct(null)
-      toast.error(err.response?.data?.message || 'Upload failed — please try again.')
+      toast.error(err.response?.data?.message || 'Upload failed. Please try again.')
+    } finally {
+      if (uploadFallbackTimer.current) {
+        clearInterval(uploadFallbackTimer.current)
+        uploadFallbackTimer.current = null
+      }
     }
   }
 

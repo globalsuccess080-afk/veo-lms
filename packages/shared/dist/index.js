@@ -14,7 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.announcementSchema = exports.updateProgressSchema = exports.verifyPaymentSchema = exports.createOrderSchema = exports.updateLessonSchema = exports.createLessonSchema = exports.createSectionSchema = exports.updateCourseSchema = exports.createCourseSchema = exports.loginSchema = exports.registerSchema = void 0;
+exports.announcementSchema = exports.updateProgressSchema = exports.paymentStatusParamsSchema = exports.createOrderSchema = exports.updateLessonSchema = exports.createLessonSchema = exports.createSectionSchema = exports.updateCourseSchema = exports.createCourseSchema = exports.loginSchema = exports.registerSchema = void 0;
 __exportStar(require("./types"), exports);
 var schemas_1 = require("./schemas");
 Object.defineProperty(exports, "registerSchema", { enumerable: true, get: function () { return schemas_1.registerSchema; } });
@@ -25,6 +25,6 @@ Object.defineProperty(exports, "createSectionSchema", { enumerable: true, get: f
 Object.defineProperty(exports, "createLessonSchema", { enumerable: true, get: function () { return schemas_1.createLessonSchema; } });
 Object.defineProperty(exports, "updateLessonSchema", { enumerable: true, get: function () { return schemas_1.updateLessonSchema; } });
 Object.defineProperty(exports, "createOrderSchema", { enumerable: true, get: function () { return schemas_1.createOrderSchema; } });
-Object.defineProperty(exports, "verifyPaymentSchema", { enumerable: true, get: function () { return schemas_1.verifyPaymentSchema; } });
+Object.defineProperty(exports, "paymentStatusParamsSchema", { enumerable: true, get: function () { return schemas_1.paymentStatusParamsSchema; } });
 Object.defineProperty(exports, "updateProgressSchema", { enumerable: true, get: function () { return schemas_1.updateProgressSchema; } });
 Object.defineProperty(exports, "announcementSchema", { enumerable: true, get: function () { return schemas_1.announcementSchema; } });

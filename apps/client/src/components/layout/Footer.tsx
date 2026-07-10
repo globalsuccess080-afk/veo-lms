@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { 
-  GraduationCap, Github, Twitter, Linkedin, Youtube, Mail, Phone, MapPin, 
+  Github, Twitter, Linkedin, Youtube, Mail, Phone, MapPin, 
   BookOpen, PlayCircle, Award, Compass, 
   MessageSquare, LifeBuoy, Bug, ThumbsUp 
 } from 'lucide-react'
@@ -76,7 +76,7 @@ export function Footer() {
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-primary shadow-sm"
                 style={{ background: 'var(--primary-subtle)', border: '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' }}
               >
-                <GraduationCap size={22} strokeWidth={2.2} />
+                <img src="/logo.png" alt="VeoLMS" className="w-full h-full object-contain" />
               </motion.div>
               <span className="font-extrabold text-[1.4rem] tracking-tight text-fg group-hover:text-primary transition-colors">VeoLMS</span>
             </Link>

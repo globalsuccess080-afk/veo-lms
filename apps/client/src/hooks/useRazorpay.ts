@@ -1,7 +1,7 @@
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { createOrder, verifyPayment, confirmMockPayment } from '../services/payment.service'
+import { createOrder, getPaymentStatus } from '../services/payment.service'
 import { toast } from 'sonner'
 
 declare global {
@@ -13,6 +13,7 @@ declare global {
 export function useRazorpay() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const [loading, setLoading] = useState(false)
 
   const loadScript = () => {
     return new Promise<boolean>((resolve) => {
@@ -25,13 +26,35 @@ export function useRazorpay() {
     })
   }
 
+  const pollStatus = useCallback(async (orderId: string) => {
+    const startedAt = Date.now()
+    while (Date.now() - startedAt < 120000) {
+      const status = await getPaymentStatus(orderId)
+      if (status.status === 'COMPLETED' && status.courseSlug) {
+        toast.success("Payment confirmed. You're enrolled!")
+        queryClient.invalidateQueries({ queryKey: ['my-enrollments'] })
+        navigate(`/learn/${status.courseSlug}`)
+        return
+      }
+      if (status.status === 'FAILED' || status.status === 'REFUNDED') {
+        toast.error('Payment could not be completed. Please contact support if money was deducted.')
+        return
+      }
+      await new Promise(resolve => setTimeout(resolve, 2500))
+    }
+    toast.error('Payment confirmation is taking longer than expected. Please check My Courses shortly.')
+  }, [navigate, queryClient])
+
   const initiatePayment = useCallback(async (courseId: string, couponCode?: string) => {
+    if (loading) return
+    setLoading(true)
     let order
     try {
       order = await createOrder(courseId, couponCode)
     } catch (e) {
       const err = e as { response?: { data?: { message?: string } } }
       toast.error(err.response?.data?.message || 'Failed to create payment order')
+      setLoading(false)
       return
     }
 
@@ -39,17 +62,18 @@ export function useRazorpay() {
       toast.success('Enrollment successful!')
       queryClient.invalidateQueries({ queryKey: ['my-enrollments'] })
       navigate(`/learn/${order.courseSlug}`)
+      setLoading(false)
       return
     }
 
     if (order.mock) {
       try {
-        const result = await confirmMockPayment(order.orderId)
-        toast.success('Enrollment successful (test mode)')
-        queryClient.invalidateQueries({ queryKey: ['my-enrollments'] })
-        navigate(`/learn/${result.courseSlug}`)
+        toast.success("Payment received successfully. We're confirming your payment...")
+        await pollStatus(order.orderId)
       } catch {
         toast.error('Test payment failed')
+      } finally {
+        setLoading(false)
       }
       return
     }
@@ -57,6 +81,7 @@ export function useRazorpay() {
     const loaded = await loadScript()
     if (!loaded) {
       toast.error('Payment gateway failed to load')
+      setLoading(false)
       return
     }
 
@@ -68,19 +93,18 @@ export function useRazorpay() {
         name: 'VeoLMS',
         description: order.courseName,
         order_id: order.orderId,
-        handler: async (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
+        handler: async () => {
           try {
-            const result = await verifyPayment({
-              razorpayOrderId: response.razorpay_order_id,
-              razorpayPaymentId: response.razorpay_payment_id,
-              razorpaySignature: response.razorpay_signature
-            })
-            toast.success('Enrollment successful!')
-            queryClient.invalidateQueries({ queryKey: ['my-enrollments'] })
-            navigate(`/learn/${result.courseSlug}`)
+            toast.success("Payment received successfully. We're confirming your payment...")
+            await pollStatus(order.orderId)
           } catch {
-            toast.error('Payment verification failed')
+            toast.error('Payment confirmation failed')
+          } finally {
+            setLoading(false)
           }
+        },
+        modal: {
+          ondismiss: () => setLoading(false)
         },
         theme: { color: '#6366f1' }
       }
@@ -89,8 +113,9 @@ export function useRazorpay() {
       rzp.open()
     } catch {
       toast.error('Failed to create payment order')
+      setLoading(false)
     }
-  }, [navigate])
+  }, [loading, navigate, pollStatus, queryClient])
 
-  return { initiatePayment, loading: false }
+  return { initiatePayment, loading }
 }

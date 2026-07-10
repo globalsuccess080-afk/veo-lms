@@ -38,7 +38,6 @@ exports.checkEnrollment = checkEnrollment;
 exports.createEnrollment = createEnrollment;
 const enrollment_model_1 = require("./enrollment.model");
 const course_model_1 = require("../course/course.model");
-const apiError_1 = require("../../utils/apiError");
 const assetPath_1 = require("../../utils/assetPath");
 async function getMyEnrollments(userId) {
     const enrollments = await enrollment_model_1.Enrollment.find({ userId, isActive: true })
@@ -66,12 +65,12 @@ async function checkEnrollment(userId, courseId) {
     const enrollment = await enrollment_model_1.Enrollment.findOne({ userId, courseId, isActive: true });
     return { enrolled: !!enrollment, enrollment };
 }
-async function createEnrollment(userId, courseId, paymentId) {
-    const existing = await enrollment_model_1.Enrollment.findOne({ userId, courseId });
+async function createEnrollment(userId, courseId, paymentId, session) {
+    const existing = await enrollment_model_1.Enrollment.findOne({ userId, courseId }).session(session || null);
     if (existing)
-        throw new apiError_1.ApiError(409, 'Already enrolled');
-    const enrollment = await enrollment_model_1.Enrollment.create({ userId, courseId, paymentId });
-    const course = await course_model_1.Course.findByIdAndUpdate(courseId, { $inc: { enrollmentCount: 1 } });
+        return existing;
+    const [enrollment] = await enrollment_model_1.Enrollment.create([{ userId, courseId, paymentId }], { session });
+    const course = await course_model_1.Course.findByIdAndUpdate(courseId, { $inc: { enrollmentCount: 1 } }, { session });
     const { User } = await Promise.resolve().then(() => __importStar(require('../user/user.model')));
     const user = await User.findById(userId);
     if (user && course) {

@@ -106,7 +106,7 @@ export function useRazorpay() {
         modal: {
           ondismiss: () => setLoading(false)
         },
-        theme: { color: '#6366f1' }
+        theme: { color: '#0891b2' }
       }
 
       const rzp = new window.Razorpay(options)

@@ -100,13 +100,13 @@ export function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-[340px] bg-card border border-line rounded-card shadow-pop z-50 animate-fade-in flex flex-col overflow-hidden max-h-[85vh]">
+        <div className="fixed left-3 right-3 top-[82px] bg-card border border-line rounded-card shadow-pop z-50 animate-fade-in flex flex-col overflow-hidden max-h-[calc(100dvh-96px)] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2 sm:w-[340px] sm:max-h-[85vh]">
           <div className="p-4 border-b border-line flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <span className="font-bold text-[15px] text-fg">Notifications</span>
-              <div className="flex items-center gap-3">
+              <span className="font-bold text-[15px] text-fg min-w-0">Notifications</span>
+              <div className="flex items-center gap-2 shrink-0">
                 {unread > 0 && (
-                  <button onClick={() => readAllMut.mutate()} className="text-[12px] font-medium text-primary hover:underline flex items-center gap-1">
+                  <button onClick={() => readAllMut.mutate()} className="text-[12px] font-medium text-primary hover:underline flex items-center gap-1 whitespace-nowrap">
                     <CheckCheck size={14} /> Mark all read
                   </button>
                 )}
@@ -167,7 +167,7 @@ export function NotificationBell() {
                             <p className={`text-[14px] font-bold truncate ${!n.isRead ? 'text-fg' : 'text-fg/80'}`}>
                               {n.title}
                             </p>
-                            <span className="text-[10px] font-bold text-muted uppercase tracking-wider shrink-0 whitespace-nowrap mt-0.5">
+                            <span className="text-[10px] font-bold text-muted uppercase tracking-wider shrink-0 whitespace-nowrap mt-0.5 max-w-[120px] text-right">
                               {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                             </span>
                           </div>

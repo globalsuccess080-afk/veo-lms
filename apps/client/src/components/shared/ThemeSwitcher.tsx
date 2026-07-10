@@ -39,12 +39,12 @@ export function ThemeSwitcher() {
                         onClick={() => setOpen(false)}
                     />
                     <div
-                        className="absolute right-0 mt-2.5 w-[280px] z-50"
+                        className="fixed left-3 right-3 top-[82px] z-50 sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-2.5 sm:w-[280px]"
                         style={{
                             filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.18)) drop-shadow(0 2px 8px rgba(0,0,0,0.12))',
                         }}
                     >
-                        <div className="bg-card border border-line rounded-2xl overflow-hidden">
+                        <div className="bg-card border border-line rounded-2xl overflow-hidden max-h-[calc(100dvh-96px)] overflow-y-auto">
 
                             <div className="flex items-start justify-between px-4 pt-4 pb-3">
                                 <div>

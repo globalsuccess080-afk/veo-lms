@@ -139,8 +139,8 @@ export default defineConfig({
         display: 'standalone',
         display_override: ['window-controls-overlay', 'standalone', 'browser'],
         orientation: 'portrait',
-        theme_color: '#6366f1',
-        background_color: '#0f172a',
+        theme_color: '#18181b',
+        background_color: '#18181b',
         icons: [
           { src: '/logo-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: '/logo-192x192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },

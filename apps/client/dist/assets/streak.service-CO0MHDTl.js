@@ -1,1 +1,0 @@
-import{f as t}from"./index-DmxRx2oB.js";async function r(){const{data:a}=await t.get("/streak/me");return a.data}async function n(){const{data:a}=await t.get("/streak/history");return a.data}async function s(){const{data:a}=await t.get("/streak/admin/leaderboard");return a.data}export{n as a,s as b,r as g};

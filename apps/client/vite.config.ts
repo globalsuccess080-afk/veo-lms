@@ -5,6 +5,22 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          vendor: ['@tanstack/react-query', '@tanstack/react-table', 'axios', 'date-fns', 'zod', 'zustand'],
+          charts: ['recharts'],
+          editor: ['react-quill-new'],
+          documents: ['jspdf', 'jspdf-autotable', 'xlsx'],
+          media: ['hls.js'],
+          motion: ['framer-motion']
+        }
+      }
+    }
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

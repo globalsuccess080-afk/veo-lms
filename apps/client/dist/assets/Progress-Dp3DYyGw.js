@@ -1,1 +1,0 @@
-import{j as r,l as i}from"./index-DmxRx2oB.js";function t({value:s,className:a}){return r.jsx("div",{className:i("h-2 w-full rounded-full bg-surface2 overflow-hidden",a),children:r.jsx("div",{className:"h-full rounded-full bg-primary transition-[width] duration-500",style:{width:`${Math.min(100,Math.max(0,s))}%`}})})}export{t as P};

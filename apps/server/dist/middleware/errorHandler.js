@@ -9,6 +9,9 @@ function errorHandler(err, _req, res, _next) {
     if (err instanceof apiError_1.ApiError) {
         return (0, apiResponse_1.sendError)(res, err.message, err.statusCode);
     }
+    if (err.name === 'MulterError') {
+        return (0, apiResponse_1.sendError)(res, err.message, 400);
+    }
     logger_1.logger.error(err.message, { stack: err.stack });
     const message = env_1.env.NODE_ENV === 'production' ? 'Internal server error' : err.message;
     (0, apiResponse_1.sendError)(res, message, 500);

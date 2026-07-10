@@ -2,6 +2,7 @@ import multer from 'multer'
 import path from 'path'
 import fs from 'fs'
 import crypto from 'crypto'
+import { ApiError } from '../utils/apiError'
 
 export const UPLOAD_ROOT = path.resolve(process.cwd(), 'uploads/temp')
 export const VIDEO_DIR = path.join(UPLOAD_ROOT, 'videos')
@@ -34,8 +35,27 @@ const ALLOWED_RESOURCE = [
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'application/vnd.ms-excel',
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/json',
+  'text/markdown',
   'text/plain',
   'text/csv'
+]
+
+const ALLOWED_RESOURCE_EXT = [
+  '.pdf',
+  '.zip',
+  '.doc',
+  '.docx',
+  '.xls',
+  '.xlsx',
+  '.ppt',
+  '.pptx',
+  '.json',
+  '.md',
+  '.txt',
+  '.csv'
 ]
 
 export const uploadVideo = multer({
@@ -43,7 +63,7 @@ export const uploadVideo = multer({
   limits: { fileSize: 500 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (ALLOWED_VIDEO.includes(file.mimetype)) cb(null, true)
-    else cb(new Error('Only video files are allowed (mp4, webm, mov, mkv)'))
+    else cb(new ApiError(400, 'Only video files are allowed (mp4, webm, mov, mkv)'))
   }
 })
 
@@ -52,7 +72,7 @@ export const uploadImage = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (ALLOWED_IMAGE.includes(file.mimetype)) cb(null, true)
-    else cb(new Error('Only image files are allowed (jpg, png, webp, gif, avif)'))
+    else cb(new ApiError(400, 'Only image files are allowed (jpg, png, webp, gif, avif)'))
   }
 })
 
@@ -60,7 +80,10 @@ export const uploadResource = multer({
   storage: diskStorage(RESOURCE_DIR, ''),
   limits: { fileSize: 50 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
-    if (ALLOWED_RESOURCE.includes(file.mimetype)) cb(null, true)
-    else cb(new Error('Invalid resource file type'))
+    const ext = path.extname(file.originalname).toLowerCase()
+    const allowedMime = ALLOWED_RESOURCE.includes(file.mimetype)
+    const allowedExt = ALLOWED_RESOURCE_EXT.includes(ext)
+    if (allowedMime || allowedExt) cb(null, true)
+    else cb(new ApiError(400, 'Invalid resource file type'))
   }
 })

@@ -62,8 +62,12 @@ const envSchema = z.object({
 })
 
 const parsed = envSchema.parse(process.env)
+const enablePayloadEncryption = process.env.ENABLE_PAYLOAD_ENCRYPTION === undefined
+  ? parsed.NODE_ENV === 'production'
+  : parsed.ENABLE_PAYLOAD_ENCRYPTION
 
 export const env = {
   ...parsed,
+  ENABLE_PAYLOAD_ENCRYPTION: enablePayloadEncryption,
   VIDEO_TOKEN_SECRET: parsed.VIDEO_TOKEN_SECRET || parsed.JWT_ACCESS_SECRET,
 }

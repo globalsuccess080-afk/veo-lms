@@ -8,6 +8,9 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
   if (err instanceof ApiError) {
     return sendError(res, err.message, err.statusCode)
   }
+  if (err.name === 'MulterError') {
+    return sendError(res, err.message, 400)
+  }
   logger.error(err.message, { stack: err.stack })
   const message = env.NODE_ENV === 'production' ? 'Internal server error' : err.message
   sendError(res, message, 500)

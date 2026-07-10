@@ -94,9 +94,9 @@ exports.uploadResource = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     if (!req.file)
         throw new apiError_1.ApiError(400, 'No file provided');
     const key = `resources/${req.file.filename}`;
-    await StorageService_1.storageService.uploadFile(req.file.path, key);
-    await promises_1.default.unlink(req.file.path).catch(() => { });
-    (0, apiResponse_1.sendSuccess)(res, { path: (0, assetPath_1.formatAssetPath)(key), key, fileName: req.file.originalname, size: req.file.size, type: req.file.mimetype }, 'Resource uploaded successfully', 201);
+    const result = await StorageService_1.storageService.uploadFile(req.file.path, key)
+        .finally(() => promises_1.default.unlink(req.file.path).catch(() => { }));
+    (0, apiResponse_1.sendSuccess)(res, { path: (0, assetPath_1.formatAssetPath)(result.key), key: result.key, fileName: req.file.originalname, size: req.file.size, type: req.file.mimetype }, 'Resource uploaded successfully', 201);
 });
 exports.jobStatus = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { jobId } = req.params;

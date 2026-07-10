@@ -105,13 +105,12 @@ export const uploadResource = asyncHandler(async (req, res) => {
   if (!req.file) throw new ApiError(400, 'No file provided')
 
   const key = `resources/${req.file.filename}`
-  await storageService.uploadFile(req.file.path, key)
-
-  await fs.unlink(req.file.path).catch(() => {})
+  const result = await storageService.uploadFile(req.file.path, key)
+    .finally(() => fs.unlink(req.file!.path).catch(() => {}))
 
   sendSuccess(
     res,
-    { path: formatAssetPath(key), key, fileName: req.file.originalname, size: req.file.size, type: req.file.mimetype },
+    { path: formatAssetPath(result.key), key: result.key, fileName: req.file.originalname, size: req.file.size, type: req.file.mimetype },
     'Resource uploaded successfully',
     201
   )

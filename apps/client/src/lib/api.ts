@@ -15,14 +15,28 @@ const api = axios.create({
 })
 
 const ENCRYPTABLE_METHODS = ['post', 'put', 'patch', 'delete']
+const DEVICE_ID_KEY = 'veolms_device_id'
+const PAYLOAD_ENCRYPTION_ENABLED = import.meta.env.VITE_ENABLE_PAYLOAD_ENCRYPTION === undefined
+  ? import.meta.env.PROD
+  : import.meta.env.VITE_ENABLE_PAYLOAD_ENCRYPTION === 'true'
+
+function getDeviceId() {
+  const existing = localStorage.getItem(DEVICE_ID_KEY)
+  if (existing) return existing
+
+  const generated = crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  localStorage.setItem(DEVICE_ID_KEY, generated)
+  return generated
+}
 
 api.interceptors.request.use(async (config: EncryptedRequestConfig) => {
   const token = useAuthStore.getState().accessToken
   if (token) config.headers.Authorization = `Bearer ${token}`
+  config.headers['x-device-id'] = getDeviceId()
 
   // If encryption is enabled and it's a modifying request with a JSON body
   if (
-    import.meta.env.VITE_ENABLE_PAYLOAD_ENCRYPTION === 'true' &&
+    PAYLOAD_ENCRYPTION_ENABLED &&
     config.method && ENCRYPTABLE_METHODS.includes(config.method.toLowerCase()) &&
     config.data && !(config.data instanceof FormData)
   ) {
@@ -99,7 +113,7 @@ api.interceptors.response.use(
         const { data } = await axios.post(
           `${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`,
           {},
-          { withCredentials: true }
+          { withCredentials: true, headers: { 'x-device-id': getDeviceId() } }
         )
         const token = data.data.accessToken
         useAuthStore.getState().setToken(token)

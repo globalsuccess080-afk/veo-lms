@@ -8,6 +8,7 @@ const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const crypto_1 = __importDefault(require("crypto"));
+const apiError_1 = require("../utils/apiError");
 exports.UPLOAD_ROOT = path_1.default.resolve(process.cwd(), 'uploads/temp');
 exports.VIDEO_DIR = path_1.default.join(exports.UPLOAD_ROOT, 'videos');
 exports.IMAGE_DIR = path_1.default.join(exports.UPLOAD_ROOT, 'images');
@@ -36,8 +37,26 @@ const ALLOWED_RESOURCE = [
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/json',
+    'text/markdown',
     'text/plain',
     'text/csv'
+];
+const ALLOWED_RESOURCE_EXT = [
+    '.pdf',
+    '.zip',
+    '.doc',
+    '.docx',
+    '.xls',
+    '.xlsx',
+    '.ppt',
+    '.pptx',
+    '.json',
+    '.md',
+    '.txt',
+    '.csv'
 ];
 exports.uploadVideo = (0, multer_1.default)({
     storage: diskStorage(exports.VIDEO_DIR, '.mp4'),
@@ -46,7 +65,7 @@ exports.uploadVideo = (0, multer_1.default)({
         if (ALLOWED_VIDEO.includes(file.mimetype))
             cb(null, true);
         else
-            cb(new Error('Only video files are allowed (mp4, webm, mov, mkv)'));
+            cb(new apiError_1.ApiError(400, 'Only video files are allowed (mp4, webm, mov, mkv)'));
     }
 });
 exports.uploadImage = (0, multer_1.default)({
@@ -56,16 +75,19 @@ exports.uploadImage = (0, multer_1.default)({
         if (ALLOWED_IMAGE.includes(file.mimetype))
             cb(null, true);
         else
-            cb(new Error('Only image files are allowed (jpg, png, webp, gif, avif)'));
+            cb(new apiError_1.ApiError(400, 'Only image files are allowed (jpg, png, webp, gif, avif)'));
     }
 });
 exports.uploadResource = (0, multer_1.default)({
     storage: diskStorage(exports.RESOURCE_DIR, ''),
     limits: { fileSize: 50 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
-        if (ALLOWED_RESOURCE.includes(file.mimetype))
+        const ext = path_1.default.extname(file.originalname).toLowerCase();
+        const allowedMime = ALLOWED_RESOURCE.includes(file.mimetype);
+        const allowedExt = ALLOWED_RESOURCE_EXT.includes(ext);
+        if (allowedMime || allowedExt)
             cb(null, true);
         else
-            cb(new Error('Invalid resource file type'));
+            cb(new apiError_1.ApiError(400, 'Invalid resource file type'));
     }
 });

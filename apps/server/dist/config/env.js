@@ -60,7 +60,11 @@ const envSchema = zod_1.z.object({
     RSA_PRIVATE_KEY: zod_1.z.string().optional()
 });
 const parsed = envSchema.parse(process.env);
+const enablePayloadEncryption = process.env.ENABLE_PAYLOAD_ENCRYPTION === undefined
+    ? parsed.NODE_ENV === 'production'
+    : parsed.ENABLE_PAYLOAD_ENCRYPTION;
 exports.env = {
     ...parsed,
+    ENABLE_PAYLOAD_ENCRYPTION: enablePayloadEncryption,
     VIDEO_TOKEN_SECRET: parsed.VIDEO_TOKEN_SECRET || parsed.JWT_ACCESS_SECRET,
 };

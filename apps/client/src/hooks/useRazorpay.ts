@@ -1,13 +1,19 @@
 import { useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
-import { createOrder, getPaymentStatus } from '../services/payment.service'
+import { confirmPayment, createOrder, getPaymentStatus } from '../services/payment.service'
 import { toast } from 'sonner'
 
 declare global {
   interface Window {
     Razorpay: new (options: Record<string, unknown>) => { open: () => void }
   }
+}
+
+interface RazorpaySuccessResponse {
+  razorpay_order_id: string
+  razorpay_payment_id: string
+  razorpay_signature: string
 }
 
 export function useRazorpay() {
@@ -93,12 +99,19 @@ export function useRazorpay() {
         name: 'VeoLMS',
         description: order.courseName,
         order_id: order.orderId,
-        handler: async () => {
+        handler: async (response: RazorpaySuccessResponse) => {
           try {
             toast.success("Payment received successfully. We're confirming your payment...")
+            const confirmed = await confirmPayment(response.razorpay_order_id, response.razorpay_payment_id, response.razorpay_signature)
+            if (confirmed.courseSlug) {
+              queryClient.invalidateQueries({ queryKey: ['my-enrollments'] })
+              navigate(`/learn/${confirmed.courseSlug}`)
+              return
+            }
             await pollStatus(order.orderId)
-          } catch {
-            toast.error('Payment confirmation failed')
+          } catch (e) {
+            const err = e as { response?: { data?: { message?: string } } }
+            toast.error(err.response?.data?.message || 'Payment confirmation failed')
           } finally {
             setLoading(false)
           }

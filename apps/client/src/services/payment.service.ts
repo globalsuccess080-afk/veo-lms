@@ -14,6 +14,11 @@ export async function getPaymentStatus(orderId: string) {
   }
 }
 
+export async function confirmPayment(orderId: string, paymentId: string, signature: string) {
+  const { data } = await api.post('/payments/confirm', { orderId, paymentId, signature })
+  return data.data as { courseSlug?: string }
+}
+
 export interface PaymentHistoryItem {
   id: string
   amount: number

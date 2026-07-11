@@ -87,13 +87,13 @@ VeoLMS is a submission project that demonstrates production-level thinking — n
 
 ## 🌐 Live Demo
 
-| Resource | URL |
-|---|---|
-| **Frontend** | `https://veo-lms.vercel.app` *(add before submission)* |
-| **API Base URL** | `https://veo-lms-api.railway.app/api` *(add before submission)* |
-| **Swagger Docs** | `https://veo-lms-api.railway.app/api/docs` *(add before submission)* |
-| **Admin Login** | `admin@veolms.com` / `Admin@123456` |
-| **Student Login** | `student@veolms.com` / `Student@123456` |
+| Resource | Open Link | Copy URL |
+|---|---|---|
+| **Frontend** | [Open frontend](https://veo-lms.bhupeshb7.me/) | `https://veo-lms.bhupeshb7.me/` |
+| **API Base URL** | [Open API](https://api.veo-lms.bhupeshb7.me/api) | `https://api.veo-lms.bhupeshb7.me/api` |
+| **Swagger Docs** | [Open Swagger](https://api.veo-lms.bhupeshb7.me/api/docs) | `https://api.veo-lms.bhupeshb7.me/api/docs` |
+| **Admin Login** | `****************************` | `****************************` |
+| **Student Login** | `bhupeshkr2912@gmail.com` / `bhupesh@1234` | `bhupeshkr2912@gmail.com` / `bhupesh@1234` |
 
 > [!NOTE]
 > All payments use **Razorpay test mode**. No real charges are made. Use Razorpay test card: `4111 1111 1111 1111`.
@@ -112,6 +112,7 @@ VeoLMS is a submission project that demonstrates production-level thinking — n
 - [x] Learning paths page
 - [x] Public certificate verification page
 - [x] Mobile-responsive design
+- [x] Progressive Web App install support with offline fallback and update prompt
 - [x] 7 color themes + dark mode + border-radius toggle
 
 </details>
@@ -239,6 +240,7 @@ VeoLMS is a submission project that demonstrates production-level thinking — n
 | **Video Player** | hls.js | Native HLS playback in all browsers; adaptive bitrate switching |
 | **Charts** | Recharts | Composable React chart library for analytics dashboard |
 | **Animations** | Framer Motion | Declarative, physics-based transitions |
+| **PWA** | vite-plugin-pwa + Workbox | Installable app shell, offline fallback, runtime caching, controlled updates |
 | **Backend Framework** | Express 5 + Node.js 20 | Mature ecosystem; excellent for I/O-bound async workloads |
 | **Language** | TypeScript 5.8 (both sides) | Full-stack type safety; shared types via monorepo package |
 | **Database** | MongoDB Atlas (Mongoose 8) | Flexible schema maps naturally to course/section/lesson hierarchy |
@@ -545,11 +547,10 @@ veolms/                          <- npm Workspaces root
 │       ├── feature-design-lld.md
 │       ├── database-design-document.md
 │       ├── performance-scalability-optimization.md
+│       ├── pwa-architecture.md
 │       ├── SECURITY_AUDIT.md
 │       ├── COST_BREAKDOWN.md
-│       ├── TRADEOFFS.md
-│       ├── QA_REPORT.md
-│       └── SUBMISSION_CHECKLIST.md
+│       └── TRADEOFFS.md
 │
 ├── packages/
 │   └── shared/                  <- Shared TypeScript types + Zod schemas
@@ -917,11 +918,10 @@ All design documentation lives in [`apps/architecture/`](apps/architecture/) —
 | [`feature-design-lld.md`](apps/architecture/feature-design-lld.md) | Module-level design: auth, video pipeline, progress, coupons, admin export | Code review |
 | [`database-design-document.md`](apps/architecture/database-design-document.md) | Schema decisions, indexing strategy, denormalization rationale | DB review |
 | [`performance-scalability-optimization.md`](apps/architecture/performance-scalability-optimization.md) | Redis caching, async patterns, bulk ops, brute-force protection | Performance review |
+| [`pwa-architecture.md`](apps/architecture/pwa-architecture.md) | Installable PWA shell, Workbox caching, offline fallback, update lifecycle | Frontend resilience review |
 | [`SECURITY_AUDIT.md`](apps/architecture/SECURITY_AUDIT.md) | Threat model matrix, residual risks, production checklist | Security audit |
 | [`COST_BREAKDOWN.md`](apps/architecture/COST_BREAKDOWN.md) | Monthly cost estimate, service selection rationale | Cost review |
 | [`TRADEOFFS.md`](apps/architecture/TRADEOFFS.md) | Every deliberate compromise: DRM, segment proxying, Redis consolidation | Architecture discussion |
-| [`QA_REPORT.md`](apps/architecture/QA_REPORT.md) | Manual test matrix for all user flows and security checks | QA verification |
-| [`SUBMISSION_CHECKLIST.md`](apps/architecture/SUBMISSION_CHECKLIST.md) | Requirement-to-implementation mapping | Evaluator reference |
 | [`video-pipeline-architecture.md`](video-pipeline-architecture.md) | Video upload → transcode → delivery pipeline in detail | Video system review |
 
 ---

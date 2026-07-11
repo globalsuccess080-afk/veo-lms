@@ -77,6 +77,12 @@ export const paymentStatusParamsSchema = z.object({
   orderId: z.string().min(1)
 })
 
+export const confirmPaymentSchema = z.object({
+  orderId: z.string().min(1),
+  paymentId: z.string().min(1),
+  signature: z.string().min(1)
+})
+
 export const updateProgressSchema = z.object({
   courseId: z.string(),
   lessonId: z.string(),

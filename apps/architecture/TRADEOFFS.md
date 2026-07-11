@@ -150,4 +150,3 @@ Deliberate compromises made for a **production-like prototype** that must be exp
 
 - [system-design-hld.md](./system-design-hld.md)
 - [SECURITY_AUDIT.md](./SECURITY_AUDIT.md)
-- [SUBMISSION_CHECKLIST.md](./SUBMISSION_CHECKLIST.md)

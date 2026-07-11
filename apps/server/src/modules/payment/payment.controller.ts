@@ -1,4 +1,4 @@
-import { createOrderSchema, paymentStatusParamsSchema } from '@veolms/shared'
+import { confirmPaymentSchema, createOrderSchema, paymentStatusParamsSchema } from '@veolms/shared'
 import * as paymentService from './payment.service'
 import { asyncHandler } from '../../utils/asyncHandler'
 import { sendSuccess } from '../../utils/apiResponse'
@@ -22,14 +22,28 @@ export const status = [
   requireRole('student', 'admin'),
   validate(paymentStatusParamsSchema, 'params'),
   asyncHandler(async (req: AuthRequest, res) => {
+    res.set('Cache-Control', 'private, no-store, max-age=0')
     const { orderId } = req.params as { orderId: string }
     const result = await paymentService.getPaymentStatus(req.user!.id, orderId)
     sendSuccess(res, result)
   })
 ]
 
+export const confirm = [
+  authenticate,
+  requireRole('student', 'admin'),
+  validate(confirmPaymentSchema),
+  asyncHandler(async (req: AuthRequest, res) => {
+    res.set('Cache-Control', 'private, no-store, max-age=0')
+    const { orderId, paymentId, signature } = req.body as { orderId: string; paymentId: string; signature: string }
+    const result = await paymentService.confirmPayment(req.user!.id, orderId, paymentId, signature)
+    sendSuccess(res, result, 'Payment confirmed')
+  })
+]
+
 export const webhook = [
   asyncHandler(async (req, res) => {
+    res.set('Cache-Control', 'no-store')
     const signature = req.headers['x-razorpay-signature']
     const result = await paymentService.handleRazorpayWebhook(
       req.body,

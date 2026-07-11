@@ -39,6 +39,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PAYMENTS_MOCK = void 0;
 exports.createOrder = createOrder;
 exports.handleRazorpayWebhook = handleRazorpayWebhook;
+exports.confirmPayment = confirmPayment;
 exports.getPaymentStatus = getPaymentStatus;
 exports.getPaymentHistory = getPaymentHistory;
 const crypto_1 = __importDefault(require("crypto"));
@@ -73,11 +74,26 @@ function normalizeStatus(status) {
     return status;
 }
 function verifyWebhookSignature(rawBody, signature) {
-    if (!env_1.env.RAZORPAY_WEBHOOK_SECRET)
-        throw new apiError_1.ApiError(500, 'Razorpay webhook secret is not configured');
+    const webhookSecret = env_1.env.RAZORPAY_WEBHOOK_SECRET || env_1.env.RAZORPAY_KEY_SECRET;
+    if (!webhookSecret || webhookSecret === 'xxx')
+        throw new apiError_1.ApiError(503, 'Payment webhook verification is not configured');
+    if (!env_1.env.RAZORPAY_WEBHOOK_SECRET) {
+        logger_1.logger.warn('RAZORPAY_WEBHOOK_SECRET is missing; falling back to RAZORPAY_KEY_SECRET for webhook verification');
+    }
     if (!signature)
         throw new apiError_1.ApiError(400, 'Missing Razorpay webhook signature');
-    const expected = crypto_1.default.createHmac('sha256', env_1.env.RAZORPAY_WEBHOOK_SECRET).update(rawBody).digest('hex');
+    const expected = crypto_1.default.createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
+    const expectedBuffer = Buffer.from(expected, 'hex');
+    const signatureBuffer = Buffer.from(signature, 'hex');
+    if (expectedBuffer.length !== signatureBuffer.length)
+        return false;
+    return crypto_1.default.timingSafeEqual(expectedBuffer, signatureBuffer);
+}
+function verifyCheckoutSignature(orderId, paymentId, signature) {
+    const expected = crypto_1.default
+        .createHmac('sha256', env_1.env.RAZORPAY_KEY_SECRET)
+        .update(`${orderId}|${paymentId}`)
+        .digest('hex');
     const expectedBuffer = Buffer.from(expected, 'hex');
     const signatureBuffer = Buffer.from(signature, 'hex');
     if (expectedBuffer.length !== signatureBuffer.length)
@@ -272,7 +288,13 @@ async function markPaymentRefunded(orderId) {
 async function handleRazorpayWebhook(rawBody, signature) {
     if (!verifyWebhookSignature(rawBody, signature))
         throw new apiError_1.ApiError(400, 'Invalid Razorpay webhook signature');
-    const event = JSON.parse(rawBody.toString('utf8'));
+    let event;
+    try {
+        event = JSON.parse(rawBody.toString('utf8'));
+    }
+    catch {
+        throw new apiError_1.ApiError(400, 'Invalid webhook payload');
+    }
     const paymentEntity = event.payload?.payment?.entity;
     const refundEntity = event.payload?.refund?.entity;
     if (event.event === 'payment.captured' && paymentEntity?.id && paymentEntity?.order_id) {
@@ -287,6 +309,18 @@ async function handleRazorpayWebhook(rawBody, signature) {
             await markPaymentRefunded(gatewayPayment.order_id);
     }
     return { received: true };
+}
+async function confirmPayment(userId, orderId, paymentId, signature) {
+    const payment = await payment_model_1.Payment.findOne({ razorpayOrderId: orderId });
+    if (!payment)
+        throw new apiError_1.ApiError(404, 'Payment not found');
+    if (payment.userId.toString() !== userId)
+        throw new apiError_1.ApiError(403, 'Unauthorized');
+    if (!verifyCheckoutSignature(orderId, paymentId, signature)) {
+        await markPaymentFailed(orderId, paymentId);
+        throw new apiError_1.ApiError(400, 'Payment signature verification failed');
+    }
+    return completeCapturedPayment(orderId, paymentId);
 }
 async function getPaymentStatus(userId, orderId) {
     const payment = await payment_model_1.Payment.findOne({ razorpayOrderId: orderId });

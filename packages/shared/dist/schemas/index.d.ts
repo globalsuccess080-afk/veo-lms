@@ -310,6 +310,19 @@ export declare const paymentStatusParamsSchema: z.ZodObject<{
 }, {
     orderId: string;
 }>;
+export declare const confirmPaymentSchema: z.ZodObject<{
+    orderId: z.ZodString;
+    paymentId: z.ZodString;
+    signature: z.ZodString;
+}, "strip", z.ZodTypeAny, {
+    orderId: string;
+    paymentId: string;
+    signature: string;
+}, {
+    orderId: string;
+    paymentId: string;
+    signature: string;
+}>;
 export declare const updateProgressSchema: z.ZodObject<{
     courseId: z.ZodString;
     lessonId: z.ZodString;

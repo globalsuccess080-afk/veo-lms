@@ -8,6 +8,7 @@ export {
   createLessonSchema,
   updateLessonSchema,
   createOrderSchema,
+  confirmPaymentSchema,
   paymentStatusParamsSchema,
   updateProgressSchema,
   announcementSchema

@@ -30,7 +30,7 @@ const swaggerDefinition = {
       description: 'Development Server',
     },
     {
-      url: process.env.API_URL || 'https://your-domain/api',
+      url: process.env.API_URL || 'https://api.veo-lms.bhupeshb7.me/api',
       description: 'Production Server',
     }
   ],

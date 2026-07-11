@@ -10,9 +10,10 @@ function errorHandler(err, _req, res, _next) {
         return (0, apiResponse_1.sendError)(res, err.message, err.statusCode);
     }
     if (err.name === 'MulterError') {
-        return (0, apiResponse_1.sendError)(res, err.message, 400);
+        const message = err.message === 'File too large' ? 'File is too large. Please upload a smaller file.' : err.message;
+        return (0, apiResponse_1.sendError)(res, message, 400);
     }
     logger_1.logger.error(err.message, { stack: err.stack });
-    const message = env_1.env.NODE_ENV === 'production' ? 'Internal server error' : err.message;
+    const message = env_1.env.NODE_ENV === 'production' ? 'Something went wrong on our side. Please try again in a moment.' : err.message;
     (0, apiResponse_1.sendError)(res, message, 500);
 }

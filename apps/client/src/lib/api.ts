@@ -66,6 +66,22 @@ api.interceptors.request.use(async (config: EncryptedRequestConfig) => {
 let refreshing = false
 let queue: Array<(token: string) => void> = []
 
+function isAuthEndpoint(url?: string) {
+  return Boolean(url && /\/auth\/(login|admin\/login|register|send-otp|forgot-password|reset-password|refresh|logout)(\?|$)/.test(url))
+}
+
+function normalizeErrorMessage(error: any) {
+  const status = error.response?.status
+  const message = error.response?.data?.message
+  if (!error.response?.data) return
+
+  if (status >= 500 || !message || /internal server error|^500\b/i.test(message)) {
+    error.response.data.message = status >= 500
+      ? 'Something went wrong on our side. Please try again in a moment.'
+      : 'We could not complete that request. Please check your input and try again.'
+  }
+}
+
 api.interceptors.response.use(
   async (res: AxiosResponse) => {
     const config = res.config as EncryptedRequestConfig
@@ -92,13 +108,14 @@ api.interceptors.response.use(
   },
   async (error) => {
     const original = error.config as EncryptedRequestConfig
+    normalizeErrorMessage(error)
     
     // Cleanup AES key if request failed (e.g. 400 error from backend validation)
     if (original && original._aesKey) {
        delete original._aesKey
     }
 
-    if (error.response?.status === 401 && !original._retry) {
+    if (error.response?.status === 401 && original && !original._retry && !isAuthEndpoint(original.url)) {
       if (refreshing) {
         return new Promise((resolve) => {
           queue.push((token) => {
@@ -123,8 +140,10 @@ api.interceptors.response.use(
         return api(original)
       } catch {
         useAuthStore.getState().logout()
-        const currentPath = encodeURIComponent(window.location.pathname + window.location.search)
-        window.location.href = `/login?redirect=${currentPath}`
+        if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/admin/login')) {
+          const currentPath = encodeURIComponent(window.location.pathname + window.location.search)
+          window.location.href = `/login?redirect=${currentPath}`
+        }
         return Promise.reject(error)
       } finally {
         refreshing = false

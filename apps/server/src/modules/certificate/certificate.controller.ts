@@ -11,6 +11,24 @@ import { ApiError } from '../../utils/apiError'
 import { env } from '../../config/env'
 import { generatePDF } from './certificate.generator'
 
+function generateCertificateId(): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let result = ''
+  for (let i = 0; i < 12; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
+async function createUniqueCertificateId(): Promise<string> {
+  for (let i = 0; i < 5; i++) {
+    const certificateId = generateCertificateId()
+    const existing = await Certificate.exists({ certificateId })
+    if (!existing) return certificateId
+  }
+  throw new ApiError(500, 'Could not generate a unique certificate ID. Please try again.')
+}
+
 export const generateCertificate = [
   authenticate,
   asyncHandler(async (req, res) => {
@@ -33,13 +51,18 @@ export const generateCertificate = [
       return sendSuccess(res, existing, 'Certificate already exists')
     }
 
-    await certificateQueue.add('generate', { userId, courseId })
-
-    res.status(202).json({
-      success: true,
-      message: 'Certificate generation started. Please check back shortly.',
-      data: null,
+    const certificate = await Certificate.create({
+      userId,
+      courseId,
+      certificateId: await createUniqueCertificateId(),
+      progressPercentage: progressPct,
+      issuedAt: new Date(),
+      status: 'active',
     })
+
+    certificateQueue.add('generate', { userId, courseId }).catch(() => undefined)
+
+    sendSuccess(res, certificate, 'Certificate generated successfully', 201)
   }),
 ]
 
@@ -73,13 +96,18 @@ export const requestPdfGeneration = asyncHandler(async (req, res) => {
   const publicUrl = `${env.FRONTEND_URL}/certificate/${cert.certificateId}`
   const dateStr = new Date(cert.issuedAt).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
   
-  const pdfBytes = await generatePDF({
-    studentName: user.name,
-    courseName: course.title,
-    date: dateStr,
-    certId: cert.certificateId,
-    publicUrl
-  })
+  let pdfBytes: Uint8Array
+  try {
+    pdfBytes = await generatePDF({
+      studentName: typeof user.getDecryptedName === 'function' ? user.getDecryptedName() : user.name,
+      courseName: course.title,
+      date: dateStr,
+      certId: cert.certificateId,
+      publicUrl
+    })
+  } catch {
+    throw new ApiError(500, 'We could not create the PDF right now. Please try again in a moment.')
+  }
   
   const base64Data = Buffer.from(pdfBytes).toString('base64')
 

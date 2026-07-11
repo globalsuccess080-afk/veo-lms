@@ -9,9 +9,10 @@ export function errorHandler(err: Error, _req: Request, res: Response, _next: Ne
     return sendError(res, err.message, err.statusCode)
   }
   if (err.name === 'MulterError') {
-    return sendError(res, err.message, 400)
+    const message = err.message === 'File too large' ? 'File is too large. Please upload a smaller file.' : err.message
+    return sendError(res, message, 400)
   }
   logger.error(err.message, { stack: err.stack })
-  const message = env.NODE_ENV === 'production' ? 'Internal server error' : err.message
+  const message = env.NODE_ENV === 'production' ? 'Something went wrong on our side. Please try again in a moment.' : err.message
   sendError(res, message, 500)
 }

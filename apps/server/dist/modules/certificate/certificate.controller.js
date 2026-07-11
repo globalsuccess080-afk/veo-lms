@@ -13,6 +13,23 @@ const lesson_model_1 = require("../lesson/lesson.model");
 const apiError_1 = require("../../utils/apiError");
 const env_1 = require("../../config/env");
 const certificate_generator_1 = require("./certificate.generator");
+function generateCertificateId() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let result = '';
+    for (let i = 0; i < 12; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+async function createUniqueCertificateId() {
+    for (let i = 0; i < 5; i++) {
+        const certificateId = generateCertificateId();
+        const existing = await certificate_model_1.Certificate.exists({ certificateId });
+        if (!existing)
+            return certificateId;
+    }
+    throw new apiError_1.ApiError(500, 'Could not generate a unique certificate ID. Please try again.');
+}
 exports.generateCertificate = [
     auth_middleware_1.authenticate,
     (0, asyncHandler_1.asyncHandler)(async (req, res) => {
@@ -31,12 +48,16 @@ exports.generateCertificate = [
         if (existing) {
             return (0, apiResponse_1.sendSuccess)(res, existing, 'Certificate already exists');
         }
-        await certificate_queue_1.certificateQueue.add('generate', { userId, courseId });
-        res.status(202).json({
-            success: true,
-            message: 'Certificate generation started. Please check back shortly.',
-            data: null,
+        const certificate = await certificate_model_1.Certificate.create({
+            userId,
+            courseId,
+            certificateId: await createUniqueCertificateId(),
+            progressPercentage: progressPct,
+            issuedAt: new Date(),
+            status: 'active',
         });
+        certificate_queue_1.certificateQueue.add('generate', { userId, courseId }).catch(() => undefined);
+        (0, apiResponse_1.sendSuccess)(res, certificate, 'Certificate generated successfully', 201);
     }),
 ];
 exports.getCourseCertificate = [
@@ -64,13 +85,19 @@ exports.requestPdfGeneration = (0, asyncHandler_1.asyncHandler)(async (req, res)
     const course = cert.courseId;
     const publicUrl = `${env_1.env.FRONTEND_URL}/certificate/${cert.certificateId}`;
     const dateStr = new Date(cert.issuedAt).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
-    const pdfBytes = await (0, certificate_generator_1.generatePDF)({
-        studentName: user.name,
-        courseName: course.title,
-        date: dateStr,
-        certId: cert.certificateId,
-        publicUrl
-    });
+    let pdfBytes;
+    try {
+        pdfBytes = await (0, certificate_generator_1.generatePDF)({
+            studentName: typeof user.getDecryptedName === 'function' ? user.getDecryptedName() : user.name,
+            courseName: course.title,
+            date: dateStr,
+            certId: cert.certificateId,
+            publicUrl
+        });
+    }
+    catch {
+        throw new apiError_1.ApiError(500, 'We could not create the PDF right now. Please try again in a moment.');
+    }
     const base64Data = Buffer.from(pdfBytes).toString('base64');
     (0, apiResponse_1.sendSuccess)(res, { data: base64Data });
 });

@@ -810,6 +810,13 @@ function ResourceManager({ resources, setResources }: {
     setResources: React.Dispatch<React.SetStateAction<LessonResource[]>>
 }) {
     const maxResourceSize = 10 * 1024 * 1024
+    const acceptedResourceTypes = [
+        '.pdf', '.zip', '.txt', '.md', '.csv', '.json',
+        '.jpg', '.jpeg', '.png', '.webp', '.gif', '.avif', '.svg',
+        '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+        'application/pdf', 'application/zip', 'text/plain', 'text/markdown', 'text/csv',
+        'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif', 'image/svg+xml'
+    ].join(',')
     const fileRef = useRef<HTMLInputElement>(null)
     const [progress, setProgress] = useState<number | null>(null)
 
@@ -825,8 +832,8 @@ function ResourceManager({ resources, setResources }: {
             const result = await uploadResource(file, setProgress)
             setResources((prev) => [...prev, { title: result.fileName, url: result.path, type: result.type, size: result.size }])
             toast.success('Resource uploaded')
-        } catch {
-            toast.error('Failed to upload resource')
+        } catch (err: any) {
+            toast.error(err.response?.data?.message || 'Failed to upload resource')
         } finally {
             setProgress(null)
             if (fileRef.current) fileRef.current.value = ''
@@ -836,7 +843,7 @@ function ResourceManager({ resources, setResources }: {
     return (
         <div>
             <Label>Lecture resources</Label>
-            <p className="text-[12px] font-medium text-subtle mb-3">Attach notes, PDFs, ZIPs or source files students can download. Max 10 MB each.</p>
+            <p className="text-[12px] font-medium text-subtle mb-3">Attach PDFs, ZIPs, images, text files, notes, or source files students can download. Max 10 MB each.</p>
 
             {resources.length > 0 && (
                 <div className="space-y-2.5 mb-4">
@@ -861,7 +868,7 @@ function ResourceManager({ resources, setResources }: {
                 </div>
             )}
 
-            <input ref={fileRef} type="file" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+            <input ref={fileRef} type="file" accept={acceptedResourceTypes} className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
             <Button
                 type="button"
                 variant="outline"

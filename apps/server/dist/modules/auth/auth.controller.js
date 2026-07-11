@@ -44,7 +44,7 @@ const env_1 = require("../../config/env");
 const cookieOptions = {
     httpOnly: true,
     secure: env_1.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: (env_1.env.NODE_ENV === 'production' ? 'none' : 'lax'),
     maxAge: 7 * 24 * 60 * 60 * 1000
 };
 function setRefreshCookie(res, token) {

@@ -56,6 +56,17 @@ function textW(font: PDFFont, text: string, size: number): number {
   return font.widthOfTextAtSize(text, size)
 }
 
+function assetPath(...parts: string[]) {
+  const candidates = [
+    path.join(__dirname, ...parts),
+    path.join(process.cwd(), 'src', 'modules', 'certificate', ...parts),
+    path.join(process.cwd(), 'dist', 'modules', 'certificate', ...parts),
+  ]
+  const found = candidates.find((candidate) => fs.existsSync(candidate))
+  if (!found) throw new Error(`Certificate asset not found: ${parts.join('/')}`)
+  return found
+}
+
 export async function generatePDF(data: {
   studentName: string
   courseName: string
@@ -68,12 +79,11 @@ export async function generatePDF(data: {
   const doc = await PDFDocument.create()
   doc.registerFontkit(fontkit)
 
-  const dir = path.join(__dirname, 'fonts')
-  const fCorm = await doc.embedFont(fs.readFileSync(path.join(dir, 'Cormorant-SemiBold.ttf')))
-  const fInter = await doc.embedFont(fs.readFileSync(path.join(dir, 'Inter-Regular.ttf')))
-  const fVibes = await doc.embedFont(fs.readFileSync(path.join(dir, 'GreatVibes-Regular.ttf')))
+  const fCorm = await doc.embedFont(fs.readFileSync(assetPath('fonts', 'Cormorant-SemiBold.ttf')))
+  const fInter = await doc.embedFont(fs.readFileSync(assetPath('fonts', 'Inter-Regular.ttf')))
+  const fVibes = await doc.embedFont(fs.readFileSync(assetPath('fonts', 'GreatVibes-Regular.ttf')))
 
-  const templateBytes = fs.readFileSync(path.join(__dirname, 'assets', 'template.png'))
+  const templateBytes = fs.readFileSync(assetPath('assets', 'template.png'))
   const templateImg = await doc.embedPng(templateBytes)
 
   const W = templateImg.width

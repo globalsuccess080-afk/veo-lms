@@ -3,7 +3,7 @@ import api from '../lib/api'
 export interface Certificate {
   _id: string
   certificateId: string
-  courseId: { _id: string, title: string, slug: string }
+  courseId: { _id: string, title: string, slug: string, thumbnail?: string, instructor?: { name: string }, totalLessons?: number }
   userId: { _id: string, name: string, email: string }
   progressPercentage: number
   pdfUrl: string
@@ -38,6 +38,11 @@ export async function getPublicCertificate(certificateId: string): Promise<any> 
 
 export async function getAdminCertificates(): Promise<Certificate[]> {
   const { data } = await api.get('/certificates/admin')
+  return data.data
+}
+
+export async function getMyCertificates(): Promise<Certificate[]> {
+  const { data } = await api.get('/certificates/my')
   return data.data
 }
 

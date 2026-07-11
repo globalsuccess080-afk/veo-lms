@@ -37,7 +37,7 @@ export function MyCoursesPage() {
   const [filter, setFilter] = useState<Filter>('all')
 
   const filtered = (enrollments || []).filter((e) =>
-    filter === 'all' ? true : filter === 'completed' ? e.progress === 100 : e.progress < 100
+    filter === 'all' ? true : filter === 'completed' ? e.progress >= 100 : e.progress < 100
   )
 
   if (isLoading) {
@@ -88,8 +88,8 @@ export function MyCoursesPage() {
                       <div className="relative overflow-hidden shrink-0">
                         <img src={resolveAssetUrl(e.course.thumbnail)} alt="" className="w-full aspect-video object-cover group-hover:scale-105 transition-transform duration-500" />
                         <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
-                        {e.progress === 100 && (
-                          <Badge tone="success" className="absolute top-3 right-3 shadow-md backdrop-blur-md bg-success/90">Completed</Badge>
+                        {e.progress >= 100 && (
+                          <Badge tone="success" className="absolute top-3 right-3 shadow-md backdrop-blur-md bg-success text-white font-bold">Completed</Badge>
                         )}
                       </div>
                       <div className="p-5 flex-1 flex flex-col justify-between">

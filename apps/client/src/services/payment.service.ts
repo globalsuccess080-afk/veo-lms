@@ -13,3 +13,24 @@ export async function getPaymentStatus(orderId: string) {
     courseSlug: string | null
   }
 }
+
+export interface PaymentHistoryItem {
+  id: string
+  amount: number
+  currency: string
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REFUNDED'
+  courseName: string
+  course: { id: string; title: string; slug: string; thumbnail?: string } | null
+  orderId: string
+  paymentId?: string | null
+  originalAmount: number
+  discountAmount: number
+  finalAmount: number
+  couponCode?: string | null
+  createdAt: string
+}
+
+export async function getPaymentHistory(): Promise<PaymentHistoryItem[]> {
+  const { data } = await api.get('/payments/history')
+  return data.data
+}

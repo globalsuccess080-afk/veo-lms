@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.revokeCertificate = exports.getAdminCertificates = exports.getPublicCertificate = exports.requestPdfGeneration = exports.getCourseCertificate = exports.generateCertificate = void 0;
+exports.revokeCertificate = exports.getAdminCertificates = exports.getMyCertificates = exports.getPublicCertificate = exports.requestPdfGeneration = exports.getCourseCertificate = exports.generateCertificate = void 0;
 const auth_middleware_1 = require("../../middleware/auth.middleware");
 const role_middleware_1 = require("../../middleware/role.middleware");
 const asyncHandler_1 = require("../../utils/asyncHandler");
@@ -14,6 +14,7 @@ const apiError_1 = require("../../utils/apiError");
 const env_1 = require("../../config/env");
 const certificate_generator_1 = require("./certificate.generator");
 const logger_1 = require("../../utils/logger");
+const assetPath_1 = require("../../utils/assetPath");
 function generateCertificateId() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
@@ -122,6 +123,27 @@ exports.getPublicCertificate = [
             issuedAt: cert.issuedAt,
             status: cert.status,
         });
+    }),
+];
+exports.getMyCertificates = [
+    auth_middleware_1.authenticate,
+    (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+        const certs = await certificate_model_1.Certificate.find({ userId: req.user.id })
+            .populate('courseId', 'title slug thumbnail instructor totalLessons')
+            .sort({ issuedAt: -1, createdAt: -1 })
+            .lean();
+        (0, apiResponse_1.sendSuccess)(res, certs.map((cert) => {
+            const course = cert.courseId;
+            return {
+                ...cert,
+                courseId: course && typeof course === 'object'
+                    ? {
+                        ...course,
+                        thumbnail: course.thumbnail ? (0, assetPath_1.formatAssetPath)(course.thumbnail) : course.thumbnail,
+                    }
+                    : course,
+            };
+        }));
     }),
 ];
 exports.getAdminCertificates = [

@@ -53,6 +53,7 @@ const coupon_service_1 = require("../coupon/coupon.service");
 const notification_model_1 = require("../notification/notification.model");
 const apiError_1 = require("../../utils/apiError");
 const logger_1 = require("../../utils/logger");
+const assetPath_1 = require("../../utils/assetPath");
 exports.PAYMENTS_MOCK = !env_1.env.RAZORPAY_KEY_ID ||
     !env_1.env.RAZORPAY_KEY_SECRET ||
     env_1.env.RAZORPAY_KEY_ID.endsWith('_xxx') ||
@@ -303,13 +304,30 @@ async function getPaymentStatus(userId, orderId) {
     };
 }
 async function getPaymentHistory(userId) {
-    const payments = await payment_model_1.Payment.find({ userId }).sort({ createdAt: -1 }).lean();
+    const payments = await payment_model_1.Payment.find({ userId })
+        .populate('courseId', 'title slug thumbnail')
+        .sort({ createdAt: -1 })
+        .lean();
     return payments.map(p => ({
         id: p._id.toString(),
         amount: p.amount,
         currency: p.currency,
         status: normalizeStatus(p.status),
         courseName: p.metadata.courseName,
+        course: p.courseId && typeof p.courseId === 'object'
+            ? {
+                id: p.courseId._id?.toString(),
+                title: p.courseId.title,
+                slug: p.courseId.slug,
+                thumbnail: p.courseId.thumbnail ? (0, assetPath_1.formatAssetPath)(p.courseId.thumbnail) : p.courseId.thumbnail,
+            }
+            : null,
+        orderId: p.razorpayOrderId,
+        paymentId: p.razorpayPaymentId,
+        originalAmount: p.originalAmount,
+        discountAmount: p.discountAmount,
+        finalAmount: p.finalAmount,
+        couponCode: p.couponCode,
         createdAt: p.createdAt.toISOString()
     }));
 }

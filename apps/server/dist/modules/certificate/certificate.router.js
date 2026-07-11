@@ -37,6 +37,7 @@ const express_1 = require("express");
 const ctrl = __importStar(require("./certificate.controller"));
 const router = (0, express_1.Router)();
 router.get('/admin', ...ctrl.getAdminCertificates);
+router.get('/my', ...ctrl.getMyCertificates);
 router.post('/generate/:courseId', ...ctrl.generateCertificate);
 router.get('/course/:courseId', ...ctrl.getCourseCertificate);
 router.get('/public/:certificateId', ...ctrl.getPublicCertificate);

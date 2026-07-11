@@ -4,6 +4,7 @@ import * as ctrl from './certificate.controller'
 const router = Router()
 
 router.get('/admin', ...ctrl.getAdminCertificates)
+router.get('/my', ...ctrl.getMyCertificates)
 router.post('/generate/:courseId', ...ctrl.generateCertificate)
 router.get('/course/:courseId', ...ctrl.getCourseCertificate)
 router.get('/public/:certificateId', ...ctrl.getPublicCertificate)

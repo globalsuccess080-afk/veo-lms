@@ -11,6 +11,7 @@ import { ApiError } from '../../utils/apiError'
 import { env } from '../../config/env'
 import { generatePDF } from './certificate.generator'
 import { logger } from '../../utils/logger'
+import { formatAssetPath } from '../../utils/assetPath'
 
 function generateCertificateId(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -136,6 +137,29 @@ export const getPublicCertificate = [
       issuedAt: cert.issuedAt,
       status: cert.status,
     })
+  }),
+]
+
+export const getMyCertificates = [
+  authenticate,
+  asyncHandler(async (req, res) => {
+    const certs = await Certificate.find({ userId: req.user!.id })
+      .populate('courseId', 'title slug thumbnail instructor totalLessons')
+      .sort({ issuedAt: -1, createdAt: -1 })
+      .lean()
+
+    sendSuccess(res, certs.map((cert) => {
+      const course = cert.courseId as any
+      return {
+        ...cert,
+        courseId: course && typeof course === 'object'
+          ? {
+              ...course,
+              thumbnail: course.thumbnail ? formatAssetPath(course.thumbnail) : course.thumbnail,
+            }
+          : course,
+      }
+    }))
   }),
 ]
 

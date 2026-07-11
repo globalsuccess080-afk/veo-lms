@@ -1,9 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { motion, type Variants } from 'framer-motion'
-import { BookOpen, CheckCircle2, TrendingUp, Clock, ArrowRight, PlayCircle, Sparkles } from 'lucide-react'
+import { BookOpen, CheckCircle2, TrendingUp, Clock, ArrowRight, PlayCircle, Sparkles, Award, ExternalLink } from 'lucide-react'
 import { getMyEnrollments } from '../../services/enrollment.service'
 import { getRecentProgress } from '../../services/progress.service'
+import { getMyCertificates, type Certificate } from '../../services/certificate.service'
 import { useAuthStore } from '../../store/authStore'
 import { PageWrapper } from '../../components/layout/PageWrapper'
 import { Progress } from '../../components/ui/Progress'
@@ -41,10 +42,15 @@ const ITEM_VAR: Variants = {
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }
 
+function formatCertificateDate(value: string) {
+  return new Date(value).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user)
   const { data: rawEnrollments, isLoading: enrollmentsLoading } = useQuery<EnrollmentItem[]>({ queryKey: ['my-enrollments'], queryFn: getMyEnrollments })
   const { data: rawRecent, isLoading: recentLoading } = useQuery<RecentItem[]>({ queryKey: ['recent-progress'], queryFn: getRecentProgress })
+  const { data: rawCertificates } = useQuery<Certificate[]>({ queryKey: ['my-certificates'], queryFn: getMyCertificates })
 
   if (enrollmentsLoading || recentLoading) {
     return <StudentDashboardSkeleton />
@@ -52,6 +58,7 @@ export function DashboardPage() {
 
   const enrollments = rawEnrollments?.filter(e => e?.course) || []
   const recent = rawRecent?.filter(r => r?.courseId) || []
+  const latestCertificates = (rawCertificates || []).filter((c) => c?.courseId).slice(0, 3)
 
   const completed = recent.filter((r) => r.isCompleted).length
   const total = enrollments.length
@@ -125,6 +132,64 @@ export function DashboardPage() {
             </motion.div>
           ))}
         </motion.div>
+
+        {/* Latest Certificates */}
+        {latestCertificates.length > 0 && (
+          <motion.section variants={STAGGER_CONTAINER} className="mb-16">
+            <motion.div variants={ITEM_VAR} className="flex items-center justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-[1.35rem] font-bold tracking-tight flex items-center gap-2" style={{ color: 'var(--fg)' }}>
+                  <Award size={20} className="text-primary" /> Latest Certificates
+                </h2>
+                <p className="text-[13px] font-medium mt-1" style={{ color: 'var(--fg-muted)' }}>Your newest verified achievements</p>
+              </div>
+              <Link to="/profile#certificates" className="hidden sm:flex text-[13px] font-bold items-center gap-1.5 hover:underline transition-colors" style={{ color: 'var(--primary)' }}>
+                View all <ArrowRight size={16} />
+              </Link>
+            </motion.div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              {latestCertificates.map((cert) => (
+                <motion.div
+                  key={cert.certificateId}
+                  variants={ITEM_VAR}
+                  whileHover={{ y: -5 }}
+                  className="relative overflow-hidden rounded-2xl border border-primary/20 bg-surface shadow-sm"
+                >
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-primary via-success to-info" />
+                  <div className="absolute right-0 top-0 h-24 w-24 rounded-bl-full bg-primary/10" />
+                  <div className="p-5 relative">
+                    <div className="flex items-start gap-3 mb-5">
+                      <div className="h-11 w-11 rounded-xl bg-primary-subtle border border-primary/20 grid place-items-center text-primary shrink-0">
+                        <Award size={22} strokeWidth={2.4} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary mb-1">Verified</p>
+                        <h3 className="font-extrabold text-[15px] leading-snug line-clamp-2 text-fg">{cert.courseId.title}</h3>
+                      </div>
+                    </div>
+                    <div className="rounded-xl bg-canvas/70 border border-line/70 p-3 mb-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[11px] font-semibold text-muted">Issued</span>
+                        <span className="text-[12px] font-bold text-fg">{formatCertificateDate(cert.issuedAt)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 mt-2">
+                        <span className="text-[11px] font-semibold text-muted">Certificate ID</span>
+                        <span className="text-[11px] font-mono font-bold text-fg truncate">{cert.certificateId}</span>
+                      </div>
+                    </div>
+                    <Link
+                      to={`/certificate/${cert.certificateId}`}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-3 py-2.5 text-[13px] font-bold text-primary-fg hover:bg-primary-hover transition-colors"
+                    >
+                      View certificate <ExternalLink size={14} />
+                    </Link>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          </motion.section>
+        )}
 
         {/* Continue Learning Section */}
         {recent && recent.length > 0 && (

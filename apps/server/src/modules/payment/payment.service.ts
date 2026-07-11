@@ -10,6 +10,7 @@ import { validateCoupon } from '../coupon/coupon.service'
 import { Notification } from '../notification/notification.model'
 import { ApiError } from '../../utils/apiError'
 import { logger } from '../../utils/logger'
+import { formatAssetPath } from '../../utils/assetPath'
 
 export const PAYMENTS_MOCK =
   !env.RAZORPAY_KEY_ID ||
@@ -277,13 +278,31 @@ export async function getPaymentStatus(userId: string, orderId: string) {
 }
 
 export async function getPaymentHistory(userId: string) {
-  const payments = await Payment.find({ userId }).sort({ createdAt: -1 }).lean()
+  const payments = await Payment.find({ userId })
+    .populate('courseId', 'title slug thumbnail')
+    .sort({ createdAt: -1 })
+    .lean()
+
   return payments.map(p => ({
     id: p._id.toString(),
     amount: p.amount,
     currency: p.currency,
     status: normalizeStatus(p.status),
     courseName: p.metadata.courseName,
+    course: p.courseId && typeof p.courseId === 'object'
+      ? {
+          id: (p.courseId as any)._id?.toString(),
+          title: (p.courseId as any).title,
+          slug: (p.courseId as any).slug,
+          thumbnail: (p.courseId as any).thumbnail ? formatAssetPath((p.courseId as any).thumbnail) : (p.courseId as any).thumbnail,
+        }
+      : null,
+    orderId: p.razorpayOrderId,
+    paymentId: p.razorpayPaymentId,
+    originalAmount: p.originalAmount,
+    discountAmount: p.discountAmount,
+    finalAmount: p.finalAmount,
+    couponCode: p.couponCode,
     createdAt: p.createdAt.toISOString()
   }))
 }

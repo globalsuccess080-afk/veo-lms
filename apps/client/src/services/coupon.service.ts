@@ -1,5 +1,12 @@
 import api from '../lib/api'
 
+export interface CouponCourse {
+  _id?: string
+  id?: string
+  title: string
+  slug?: string
+}
+
 export interface Coupon {
   id?: string
   _id: string
@@ -14,7 +21,7 @@ export interface Coupon {
   validUntil: string
   isActive: boolean
   applicableCourseIds: string[] | null
-  applicableCourses?: string[]
+  applicableCourses?: CouponCourse[]
 }
 
 export async function validateCoupon(courseId: string, couponCode: string) {

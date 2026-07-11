@@ -31,6 +31,7 @@ const LEVEL_OPTIONS = [
 type VideoSource = 'youtube' | 'upload'
 const emptyLesson = { title: '', description: '', source: 'upload' as VideoSource, youtubeUrl: '', fileUrl: '', duration: 0, isPreview: false, pendingFile: null as File | null }
 type DraftUploadState = { pct: number; stage: string; fileName: string } | null
+type CourseFormErrors = Partial<Record<'title' | 'category' | 'shortDescription' | 'description' | 'price' | 'originalPrice' | 'instructorName', string>>
 
 const containerVars: Variants = {
     hidden: { opacity: 0 },
@@ -125,6 +126,49 @@ function CategoryCombobox({ value, onChange, options, placeholder }: { value: st
     )
 }
 
+function plainText(value: string) {
+    return value.replace(/<[^>]*>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function validateCourseForm(form: {
+    title: string
+    description: string
+    shortDescription: string
+    instructorName: string
+    price: number
+    originalPrice: number
+    category: string
+}) {
+    const errors: CourseFormErrors = {}
+
+    if (form.title.trim().length < 3) {
+        errors.title = 'Enter a course title with at least 3 characters.'
+    }
+    if (form.category.trim().length < 2) {
+        errors.category = 'Select or enter a category.'
+    }
+    const shortDescription = form.shortDescription.trim()
+    if (shortDescription.length < 10) {
+        errors.shortDescription = 'Add a short description with at least 10 characters.'
+    } else if (shortDescription.length > 300) {
+        errors.shortDescription = 'Short description must be 300 characters or less.'
+    }
+    if (plainText(form.description).length < 10) {
+        errors.description = 'Add a full description with at least 10 characters.'
+    }
+    if (form.instructorName.trim().length < 2) {
+        errors.instructorName = 'Enter the instructor name.'
+    }
+    if (!Number.isFinite(form.price) || form.price < 0) {
+        errors.price = 'Enter a valid course price.'
+    }
+    if (!Number.isFinite(form.originalPrice) || form.originalPrice < 0) {
+        errors.originalPrice = 'Enter a valid original price.'
+    }
+
+    return errors
+}
+
 
 export function CourseEditorPage() {
     const { id } = useParams()
@@ -145,6 +189,7 @@ export function CourseEditorPage() {
         instructorName: 'VeoLMS Instructor', price: 499, originalPrice: 999,
         category: 'JavaScript', level: 'beginner', isFeatured: false, isPublished: false
     })
+    const [formErrors, setFormErrors] = useState<CourseFormErrors>({})
 
     const [newSection, setNewSection] = useState('')
     const [lessonForm, setLessonForm] = useState(emptyLesson)
@@ -231,10 +276,10 @@ export function CourseEditorPage() {
     const saveMut = useMutation({
         mutationFn: () => {
             const body = {
-                title: form.title, description: form.description, shortDescription: form.shortDescription,
+                title: form.title.trim(), description: form.description, shortDescription: form.shortDescription.trim(),
                 thumbnail: form.thumbnail, trailerUrl: form.trailerUrl,
-                instructor: { name: form.instructorName, bio: '', avatar: '' },
-                price: form.price, originalPrice: form.originalPrice, category: form.category,
+                instructor: { name: form.instructorName.trim(), bio: '', avatar: '' },
+                price: form.price, originalPrice: form.originalPrice, category: form.category.trim(),
                 level: form.level, isFeatured: form.isFeatured, isPublished: form.isPublished
             }
             return isNew ? createCourse(body) : updateCourse(id!, body)
@@ -244,7 +289,7 @@ export function CourseEditorPage() {
             toast.success(isNew ? 'Course created — now add your curriculum' : 'Course saved')
             if (isNew) navigate(`/admin/courses/${data.id}/edit`)
         },
-        onError: () => toast.error('Failed to save course')
+        onError: (err: { response?: { data?: { message?: string } } }) => toast.error(err.response?.data?.message || 'Could not save the course. Please check the form and try again.')
     })
 
     const addSectionMut = useMutation({
@@ -369,6 +414,21 @@ export function CourseEditorPage() {
 
     const set = (field: string, value: string | number | boolean) => {
         setForm((p) => ({ ...p, [field]: value }))
+        if (field in formErrors) {
+            setFormErrors((prev) => ({ ...prev, [field]: undefined }))
+        }
+    }
+
+    const handleSaveCourse = () => {
+        const errors = validateCourseForm(form)
+        setFormErrors(errors)
+
+        if (Object.keys(errors).length > 0) {
+            toast.error('Please fix the highlighted fields before saving.')
+            return
+        }
+
+        saveMut.mutate()
     }
 
     if (isLoading) {
@@ -382,7 +442,7 @@ export function CourseEditorPage() {
             actions={
                 <div className="flex items-center gap-3">
                     <Link to="/admin/courses" className="text-[13px] font-bold text-muted hover:text-fg flex items-center gap-1 transition-colors"><ArrowLeft size={16} /> Back</Link>
-                    <Button onClick={() => saveMut.mutate()} loading={saveMut.isPending} className="font-bold shadow-soft">
+                    <Button onClick={handleSaveCourse} loading={saveMut.isPending} className="font-bold shadow-soft">
                         <Save size={16} className="mr-1.5" /> {isNew ? 'Create Course' : 'Save Changes'}
                     </Button>
                 </div>
@@ -396,8 +456,8 @@ export function CourseEditorPage() {
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-6">
-                            <Field label="Title"><Input className="h-12 bg-canvas hover:border-line-strong transition-all" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. Next.js for Beginners" /></Field>
-                            <Field label="Category">
+                            <Field label="Title" error={formErrors.title}><Input error={formErrors.title} className="h-12 bg-canvas hover:border-line-strong transition-all" value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. Next.js for Beginners" /></Field>
+                            <Field label="Category" error={formErrors.category}>
                                 <CategoryCombobox
                                     value={form.category}
                                     onChange={(val) => set('category', val)}
@@ -408,11 +468,11 @@ export function CourseEditorPage() {
                         </div>
 
                         <div className="mt-6">
-                            <Field label="Short description"><Input className="h-12 bg-canvas hover:border-line-strong transition-all" value={form.shortDescription} onChange={(e) => set('shortDescription', e.target.value)} placeholder="One-line summary shown on cards" /></Field>
+                            <Field label="Short description" error={formErrors.shortDescription}><Input error={formErrors.shortDescription} className="h-12 bg-canvas hover:border-line-strong transition-all" value={form.shortDescription} onChange={(e) => set('shortDescription', e.target.value)} placeholder="One-line summary shown on cards" /></Field>
                         </div>
 
                         <div className="mt-6">
-                            <Field label="Full description"><RichTextEditor className="placeholder:opacity-60" value={form.description} onChange={(val) => set('description', val)} placeholder="What students will learn, prerequisites, etc." /></Field>
+                            <Field label="Full description" error={formErrors.description}><RichTextEditor className="placeholder:opacity-60" value={form.description} onChange={(val) => set('description', val)} placeholder="What students will learn, prerequisites, etc." /></Field>
                         </div>
 
                         <div className="grid md:grid-cols-2 gap-6 mt-6">
@@ -421,10 +481,10 @@ export function CourseEditorPage() {
                         </div>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-6">
-                            <Field label="Price (₹)"><Input className="h-12 bg-canvas hover:border-line-strong transition-all" type="number" value={form.price} onChange={(e) => set('price', +e.target.value)} /></Field>
-                            <Field label="Original price (₹)"><Input className="h-12 bg-canvas hover:border-line-strong transition-all" type="number" value={form.originalPrice} onChange={(e) => set('originalPrice', +e.target.value)} /></Field>
+                            <Field label="Price (₹)" error={formErrors.price}><Input error={formErrors.price} className="h-12 bg-canvas hover:border-line-strong transition-all" type="number" value={form.price} onChange={(e) => set('price', +e.target.value)} /></Field>
+                            <Field label="Original price (₹)" error={formErrors.originalPrice}><Input error={formErrors.originalPrice} className="h-12 bg-canvas hover:border-line-strong transition-all" type="number" value={form.originalPrice} onChange={(e) => set('originalPrice', +e.target.value)} /></Field>
                             <Field label="Level"><AppSelect value={form.level} options={LEVEL_OPTIONS} onChange={(v) => set('level', v)} /></Field>
-                            <Field label="Instructor"><Input className="h-12 bg-canvas hover:border-line-strong transition-all" value={form.instructorName} onChange={(e) => set('instructorName', e.target.value)} /></Field>
+                            <Field label="Instructor" error={formErrors.instructorName}><Input error={formErrors.instructorName} className="h-12 bg-canvas hover:border-line-strong transition-all" value={form.instructorName} onChange={(e) => set('instructorName', e.target.value)} /></Field>
                         </div>
 
                         <div className="flex gap-8 mt-8 p-4 rounded-xl bg-surface2/50 border border-line/80">

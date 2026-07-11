@@ -35,6 +35,14 @@ const itemVars: Variants = {
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }
 
+function couponCourseIds(coupon: Coupon) {
+  return coupon.applicableCourseIds || coupon.applicableCourses?.map((course) => course._id || course.id).filter(Boolean) || []
+}
+
+function couponCourseNames(coupon: Coupon) {
+  return coupon.applicableCourses?.map((course) => course.title).filter(Boolean) || []
+}
+
 export function CouponsPage() {
   const queryClient = useQueryClient()
   const {
@@ -468,8 +476,17 @@ export function CouponsPage() {
             <div>
               <p className="text-xs text-muted">Applicability</p>
               <p className="text-sm text-fg">
-                {(selectedCoupon.applicableCourses?.length || selectedCoupon.applicableCourseIds?.length) ? 'Specific courses' : 'All courses'}
+                {couponCourseIds(selectedCoupon).length ? 'Specific courses' : 'All courses'}
               </p>
+              {couponCourseNames(selectedCoupon).length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {couponCourseNames(selectedCoupon).map((courseName) => (
+                    <span key={courseName} className="rounded-full bg-primary/10 border border-primary/20 px-2.5 py-1 text-[11px] font-bold text-primary">
+                      {courseName}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}

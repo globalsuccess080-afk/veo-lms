@@ -16,21 +16,41 @@ const queryBuilder_1 = require("../../utils/queryBuilder");
 async function invalidateCache(code) {
     await cache_1.cache.del(`coupon:${code.toUpperCase()}`);
 }
+function normalizeCouponPayload(data) {
+    const applicableCourses = Array.isArray(data.applicableCourseIds)
+        ? data.applicableCourseIds
+        : data.applicableCourses;
+    const normalized = {
+        ...data,
+        applicableCourses: applicableCourses && applicableCourses.length > 0 ? applicableCourses : [],
+    };
+    delete normalized.applicableCourseIds;
+    return normalized;
+}
+function formatCoupon(coupon) {
+    const applicableCourses = Array.isArray(coupon.applicableCourses) ? coupon.applicableCourses : [];
+    return {
+        ...coupon,
+        id: coupon._id.toString(),
+        applicableCourseIds: applicableCourses.map((course) => course?._id ? course._id.toString() : course.toString()),
+        applicableCourses,
+    };
+}
 async function createCoupon(data) {
     const existing = await coupon_model_1.Coupon.findOne({ code: data.code.toUpperCase() });
     if (existing)
         throw new apiError_1.ApiError(409, 'Coupon code already exists');
-    const coupon = await coupon_model_1.Coupon.create({ ...data, code: data.code.toUpperCase() });
-    return coupon;
+    const coupon = await coupon_model_1.Coupon.create({ ...normalizeCouponPayload(data), code: data.code.toUpperCase() });
+    return formatCoupon(await coupon.populate('applicableCourses', 'title slug'));
 }
 async function getCoupons(query) {
     const { filterQuery, skip, limit, sort, page } = (0, queryBuilder_1.buildQuery)(query, ['code']);
     const [coupons, total] = await Promise.all([
-        coupon_model_1.Coupon.find(filterQuery).sort(sort).skip(skip).limit(limit).lean(),
+        coupon_model_1.Coupon.find(filterQuery).populate('applicableCourses', 'title slug').sort(sort).skip(skip).limit(limit).lean(),
         coupon_model_1.Coupon.countDocuments(filterQuery)
     ]);
     return {
-        coupons: coupons.map(c => ({ ...c, id: c._id.toString() })),
+        coupons: coupons.map(formatCoupon),
         total,
         page,
         limit,
@@ -38,24 +58,24 @@ async function getCoupons(query) {
     };
 }
 async function getCouponById(id) {
-    const coupon = await coupon_model_1.Coupon.findById(id);
+    const coupon = await coupon_model_1.Coupon.findById(id).populate('applicableCourses', 'title slug').lean();
     if (!coupon)
         throw new apiError_1.ApiError(404, 'Coupon not found');
-    return coupon;
+    return formatCoupon(coupon);
 }
 async function updateCoupon(id, data) {
-    const coupon = await coupon_model_1.Coupon.findByIdAndUpdate(id, data, { new: true });
+    const coupon = await coupon_model_1.Coupon.findByIdAndUpdate(id, normalizeCouponPayload(data), { new: true }).populate('applicableCourses', 'title slug');
     if (!coupon)
         throw new apiError_1.ApiError(404, 'Coupon not found');
     await invalidateCache(coupon.code);
-    return coupon;
+    return formatCoupon(coupon.toObject());
 }
 async function updateStatus(id, isActive) {
-    const coupon = await coupon_model_1.Coupon.findByIdAndUpdate(id, { isActive }, { new: true });
+    const coupon = await coupon_model_1.Coupon.findByIdAndUpdate(id, { isActive }, { new: true }).populate('applicableCourses', 'title slug');
     if (!coupon)
         throw new apiError_1.ApiError(404, 'Coupon not found');
     await invalidateCache(coupon.code);
-    return coupon;
+    return formatCoupon(coupon.toObject());
 }
 async function deleteCoupon(id) {
     const coupon = await coupon_model_1.Coupon.findByIdAndDelete(id);

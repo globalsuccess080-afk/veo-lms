@@ -9,24 +9,48 @@ export async function invalidateCache(code: string) {
   await cache.del(`coupon:${code.toUpperCase()}`)
 }
 
+function normalizeCouponPayload(data: any) {
+  const applicableCourses = Array.isArray(data.applicableCourseIds)
+    ? data.applicableCourseIds
+    : data.applicableCourses
+
+  const normalized = {
+    ...data,
+    applicableCourses: applicableCourses && applicableCourses.length > 0 ? applicableCourses : [],
+  }
+
+  delete normalized.applicableCourseIds
+  return normalized
+}
+
+function formatCoupon(coupon: any) {
+  const applicableCourses = Array.isArray(coupon.applicableCourses) ? coupon.applicableCourses : []
+  return {
+    ...coupon,
+    id: coupon._id.toString(),
+    applicableCourseIds: applicableCourses.map((course: any) => course?._id ? course._id.toString() : course.toString()),
+    applicableCourses,
+  }
+}
+
 export async function createCoupon(data: any) {
   const existing = await Coupon.findOne({ code: data.code.toUpperCase() })
   if (existing) throw new ApiError(409, 'Coupon code already exists')
 
-  const coupon = await Coupon.create({ ...data, code: data.code.toUpperCase() })
-  return coupon
+  const coupon = await Coupon.create({ ...normalizeCouponPayload(data), code: data.code.toUpperCase() })
+  return formatCoupon(await coupon.populate('applicableCourses', 'title slug'))
 }
 
 export async function getCoupons(query: any) {
   const { filterQuery, skip, limit, sort, page } = buildQuery(query, ['code'])
 
   const [coupons, total] = await Promise.all([
-    Coupon.find(filterQuery).sort(sort as any).skip(skip).limit(limit).lean(),
+    Coupon.find(filterQuery).populate('applicableCourses', 'title slug').sort(sort as any).skip(skip).limit(limit).lean(),
     Coupon.countDocuments(filterQuery)
   ])
 
   return {
-    coupons: coupons.map(c => ({ ...c, id: c._id.toString() })),
+    coupons: coupons.map(formatCoupon),
     total,
     page,
     limit,
@@ -35,23 +59,23 @@ export async function getCoupons(query: any) {
 }
 
 export async function getCouponById(id: string) {
-  const coupon = await Coupon.findById(id)
+  const coupon = await Coupon.findById(id).populate('applicableCourses', 'title slug').lean()
   if (!coupon) throw new ApiError(404, 'Coupon not found')
-  return coupon
+  return formatCoupon(coupon)
 }
 
 export async function updateCoupon(id: string, data: any) {
-  const coupon = await Coupon.findByIdAndUpdate(id, data, { new: true })
+  const coupon = await Coupon.findByIdAndUpdate(id, normalizeCouponPayload(data), { new: true }).populate('applicableCourses', 'title slug')
   if (!coupon) throw new ApiError(404, 'Coupon not found')
   await invalidateCache(coupon.code)
-  return coupon
+  return formatCoupon(coupon.toObject())
 }
 
 export async function updateStatus(id: string, isActive: boolean) {
-  const coupon = await Coupon.findByIdAndUpdate(id, { isActive }, { new: true })
+  const coupon = await Coupon.findByIdAndUpdate(id, { isActive }, { new: true }).populate('applicableCourses', 'title slug')
   if (!coupon) throw new ApiError(404, 'Coupon not found')
   await invalidateCache(coupon.code)
-  return coupon
+  return formatCoupon(coupon.toObject())
 }
 
 export async function deleteCoupon(id: string) {

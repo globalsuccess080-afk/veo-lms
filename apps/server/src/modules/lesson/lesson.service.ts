@@ -94,9 +94,6 @@ export async function createLesson(courseId: string, sectionId: string, data: Cr
 
 export async function updateLesson(id: string, data: Partial<CreateLessonInput>) {
   const update: Record<string, unknown> = { ...data }
-  // Uploaded videos are probed by ffmpeg, making their metadata authoritative.
-  // An admin form can stay open while processing finishes, then submit a stale
-  // zero. Do not let that erase the duration discovered by the worker.
   if (!data.youtubeUrl) {
     const existing = await Lesson.findById(id).select('video.metadata.duration').lean()
     const metadataDuration = Number((existing?.video as any)?.metadata?.duration)
@@ -126,15 +123,12 @@ export async function deleteLesson(id: string) {
   const lesson = await Lesson.findByIdAndDelete(id)
   if (!lesson) throw new ApiError(404, 'Lesson not found')
 
-  // Cancel any pending/active BullMQ transcode jobs for this lesson
-  // so stale retries don't crash with ENOENT on cleaned-up temp files
   if (lesson.video?.jobId) {
     const job = await videoQueue.getJob(lesson.video.jobId).catch(() => null)
     if (job) {
       const state = await job.getState().catch(() => null)
       if (state && state !== 'completed') {
         await job.remove().catch(() => {})
-        console.log(`[deleteLesson] Cancelled job ${lesson.video.jobId} for deleted lesson ${id}`)
       }
     }
   }

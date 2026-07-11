@@ -13,8 +13,6 @@ async function updateProgress(userId, courseId, lessonId, watchedSeconds, totalS
     const existing = await progress_model_1.Progress.findOne({ userId, courseId, lessonId });
     const alreadyCompleted = existing?.isCompleted === true;
     const safeTotal = totalSeconds > 0 ? totalSeconds : existing?.totalSeconds || 0;
-    // Completion is sticky: once a lesson is completed it never reverts to
-    // incomplete from later periodic saves (replays, resumes, etc).
     const completed = alreadyCompleted || isCompleted === true || (safeTotal > 0 && watchedSeconds / safeTotal >= 0.9);
     const progress = await progress_model_1.Progress.findOneAndUpdate({ userId, courseId, lessonId }, {
         watchedSeconds,
@@ -29,10 +27,8 @@ async function updateProgress(userId, courseId, lessonId, watchedSeconds, totalS
         const percent = Math.round((completedLessons / totalLessons) * 100);
         await enrollment_model_1.Enrollment.findOneAndUpdate({ userId, courseId }, { progress: percent });
     }
-    // Update Learning Streak
     if (completed || watchedSeconds >= 180) {
-        // Fire and forget so we don't block progress update
-        (0, streak_service_1.updateLearningStreak)(userId).catch(console.error);
+        void (0, streak_service_1.updateLearningStreak)(userId).catch(() => undefined);
     }
     return {
         id: progress._id.toString(),

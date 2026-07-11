@@ -9,7 +9,6 @@ import { Coupon, CouponUsage } from '../coupon/coupon.model'
 import { validateCoupon } from '../coupon/coupon.service'
 import { Notification } from '../notification/notification.model'
 import { ApiError } from '../../utils/apiError'
-import { logger } from '../../utils/logger'
 import { formatAssetPath } from '../../utils/assetPath'
 
 export const PAYMENTS_MOCK =
@@ -35,9 +34,6 @@ function normalizeStatus(status: string): FinalPaymentStatus {
 function verifyWebhookSignature(rawBody: Buffer, signature?: string) {
   const webhookSecret = env.RAZORPAY_WEBHOOK_SECRET || env.RAZORPAY_KEY_SECRET
   if (!webhookSecret || webhookSecret === 'xxx') throw new ApiError(503, 'Payment webhook verification is not configured')
-  if (!env.RAZORPAY_WEBHOOK_SECRET) {
-    logger.warn('RAZORPAY_WEBHOOK_SECRET is missing; falling back to RAZORPAY_KEY_SECRET for webhook verification')
-  }
   if (!signature) throw new ApiError(400, 'Missing Razorpay webhook signature')
   const expected = crypto.createHmac('sha256', webhookSecret).update(rawBody).digest('hex')
   const expectedBuffer = Buffer.from(expected, 'hex')
@@ -102,8 +98,6 @@ async function finalizeEnrollment(userId: string, payment: any, session?: Client
 }
 
 export async function createOrder(userId: string, courseId: string, couponCode?: string) {
-  logger.debug(`[createOrder] Received couponCode: "${couponCode}" for course: ${courseId}`)
-
   const course = await Course.findById(courseId)
   if (!course) throw new ApiError(404, 'Course not found')
   if (!course.isPublished) throw new ApiError(400, 'Course not available')
@@ -127,26 +121,20 @@ export async function createOrder(userId: string, courseId: string, couponCode?:
 
   const amount = Math.round(finalAmount * 100)
 
-  logger.debug(`[createOrder] originalAmount: ${originalAmount}, finalAmount: ${finalAmount}, amount (paise): ${amount}`)
-
   let orderId = `mock_order_${crypto.randomBytes(8).toString('hex')}`
   if (!PAYMENTS_MOCK) {
     if (amount > 0) {
       try {
-        logger.debug(`[createOrder] Calling Razorpay with amount: ${amount}`)
         const receiptId = `rcpt_${crypto.randomBytes(8).toString('hex')}`
         const rzpOrder = await razorpay?.orders.create({ amount, currency: 'INR', receipt: receiptId })
         if (rzpOrder) {
           orderId = rzpOrder.id
-          logger.debug(`[createOrder] Razorpay order created: ${orderId}`)
         }
       } catch (err: any) {
-        console.error(`[createOrder Debug] Razorpay orders.create ERROR:`, err)
         throw new ApiError(500, `Razorpay error: ${err?.message || 'Unknown payment gateway error'}`)
       }
     } else {
       orderId = `free_order_${crypto.randomBytes(8).toString('hex')}`
-      logger.debug(`[createOrder] Free order generated: ${orderId}`)
     }
   }
 

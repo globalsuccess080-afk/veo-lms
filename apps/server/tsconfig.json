@@ -9,6 +9,5 @@
     "skipLibCheck": true,
     "resolveJsonModule": true
   },
-  "include": ["src"],
-  "exclude": ["src/modules/video/workers/TranscodeWorker.ts"]
+  "include": ["src"]
 }

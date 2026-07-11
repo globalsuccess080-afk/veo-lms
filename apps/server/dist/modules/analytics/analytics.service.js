@@ -15,7 +15,6 @@ const redis_1 = require("../../config/redis");
 const completedPaymentStatuses = ['COMPLETED', 'paid'];
 async function getDashboard(userId, range) {
     const cacheKey = `analytics:tenant:${userId}:${range}`;
-    // Attempt cache hit
     const cached = await redis_1.redis.get(cacheKey);
     if (cached) {
         try {
@@ -43,9 +42,7 @@ async function getDashboard(userId, range) {
             startDate.setDate(now.getDate() - 30);
             break;
     }
-    // --- AGGREGATIONS ---
     const [revenueData, studentsData, coursesData, engagementData, revenueTrends, revenueByCategory, revenueByCoupon, studentGrowth, announcementsCount, topCourses, couponStats, lessonAnalytics] = await Promise.all([
-        // Revenue (Total, This Range)
         payment_model_1.Payment.aggregate([
             { $match: { status: { $in: completedPaymentStatuses } } },
             { $group: {
@@ -55,7 +52,6 @@ async function getDashboard(userId, range) {
                     countRange: { $sum: { $cond: [{ $gte: ['$createdAt', startDate] }, 1, 0] } }
                 } }
         ]),
-        // Students
         user_model_1.User.aggregate([
             { $match: { role: 'student' } },
             { $group: {
@@ -64,7 +60,6 @@ async function getDashboard(userId, range) {
                     newRange: { $sum: { $cond: [{ $gte: ['$createdAt', startDate] }, 1, 0] } }
                 } }
         ]),
-        // Courses
         course_model_1.Course.aggregate([
             { $group: {
                     _id: null,
@@ -73,7 +68,6 @@ async function getDashboard(userId, range) {
                     draft: { $sum: { $cond: [{ $not: '$isPublished' }, 1, 0] } }
                 } }
         ]),
-        // Engagement (Watch Time, Lessons Completed)
         progress_model_1.Progress.aggregate([
             { $group: {
                     _id: null,
@@ -81,7 +75,6 @@ async function getDashboard(userId, range) {
                     completedLessons: { $sum: { $cond: ['$isCompleted', 1, 0] } }
                 } }
         ]),
-        // Revenue Trends
         payment_model_1.Payment.aggregate([
             { $match: { status: { $in: completedPaymentStatuses }, createdAt: { $gte: startDate } } },
             { $group: {
@@ -90,7 +83,6 @@ async function getDashboard(userId, range) {
                 } },
             { $sort: { _id: 1 } }
         ]),
-        // Revenue Breakdown: Category
         payment_model_1.Payment.aggregate([
             { $match: { status: { $in: completedPaymentStatuses }, createdAt: { $gte: startDate } } },
             { $lookup: { from: 'courses', localField: 'courseId', foreignField: '_id', as: 'course' } },
@@ -98,14 +90,12 @@ async function getDashboard(userId, range) {
             { $group: { _id: '$course.category', revenue: { $sum: '$amount' } } },
             { $sort: { revenue: -1 } }
         ]),
-        // Revenue Breakdown: Coupon
         payment_model_1.Payment.aggregate([
             { $match: { status: { $in: completedPaymentStatuses }, createdAt: { $gte: startDate }, couponCode: { $ne: null } } },
             { $group: { _id: '$couponCode', revenue: { $sum: '$amount' }, usageCount: { $sum: 1 } } },
             { $sort: { revenue: -1 } },
             { $limit: 10 }
         ]),
-        // Student Growth
         user_model_1.User.aggregate([
             { $match: { role: 'student', createdAt: { $gte: startDate } } },
             { $group: {
@@ -114,9 +104,7 @@ async function getDashboard(userId, range) {
                 } },
             { $sort: { _id: 1 } }
         ]),
-        // Announcements
         mongoose_1.default.model('Announcement').countDocuments({ createdAt: { $gte: startDate } }),
-        // Top Performing Courses & Funnel
         course_model_1.Course.aggregate([
             { $lookup: { from: 'payments', localField: '_id', foreignField: 'courseId', as: 'payments' } },
             { $lookup: { from: 'enrollments', localField: '_id', foreignField: 'courseId', as: 'enrollments' } },
@@ -140,7 +128,6 @@ async function getDashboard(userId, range) {
             { $sort: { revenue: -1 } },
             { $limit: 10 }
         ]),
-        // Coupon Global Stats
         coupon_model_1.CouponUsage.aggregate([
             { $group: {
                     _id: '$couponCode',
@@ -150,7 +137,6 @@ async function getDashboard(userId, range) {
             { $sort: { uses: -1 } },
             { $limit: 5 }
         ]),
-        // In-depth Lesson Analytics
         progress_model_1.Progress.aggregate([
             { $group: {
                     _id: '$lessonId',
@@ -181,8 +167,6 @@ async function getDashboard(userId, range) {
     const rangeRev = revenueData[0]?.rangeTotal || 0;
     const orderCount = revenueData[0]?.countRange || 0;
     const avgOrderValue = orderCount > 0 ? (rangeRev / orderCount).toFixed(0) : 0;
-    // Completion rate overall calculation
-    // Average progress of all enrollments
     const completionStats = await enrollment_model_1.Enrollment.aggregate([
         { $group: { _id: null, avgProgress: { $avg: '$progress' } } }
     ]);
@@ -192,7 +176,7 @@ async function getDashboard(userId, range) {
                 total: totalRev,
                 range: rangeRev,
                 avgOrderValue,
-                growth: 0 // Would require previous period comparison
+                growth: 0
             },
             students: {
                 total: studentsData[0]?.total || 0,
@@ -248,7 +232,6 @@ async function getDashboard(userId, range) {
             uses: c.uses
         }))
     };
-    // Cache for 15 minutes (900 seconds)
     await redis_1.redis.setex(cacheKey, 900, JSON.stringify(dashboardData));
     return dashboardData;
 }

@@ -14,7 +14,14 @@ export function formatPrice(paise: number) {
 }
 
 export function formatINR(rupees: number) {
-  return `₹${rupees.toLocaleString('en-IN')}`
+  const amount = Number.isFinite(Number(rupees)) ? Number(rupees) : 0
+  const hasFraction = Math.abs(amount % 1) > 0
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: hasFraction ? 2 : 0,
+    maximumFractionDigits: 2
+  }).format(amount)
 }
 
 export function parseYouTubeId(url: string): string | null {
@@ -38,18 +45,12 @@ export function toYouTubeEmbed(url: string): string | null {
 export function parseMarkdownBasic(text: string): string {
   if (!text) return ''
   let html = text
-    // Escaped characters (prevent XSS basic)
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    // Bold
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    // Italic
     .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    // Links
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>')
-    // Lists
     .replace(/^- (.*)$/gm, '<li class="ml-4 list-disc">$1</li>')
-    // Line breaks
     .replace(/\n/g, '<br/>')
   return html
 }

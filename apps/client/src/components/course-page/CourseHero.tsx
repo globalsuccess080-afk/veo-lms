@@ -107,9 +107,9 @@ export function CourseHero({ course }: CourseHeroProps) {
         </p>
 
         <div className="flex flex-wrap gap-2">
-          {stats.map(({ icon: Icon, label, accent }) => (
+          {stats.map(({ icon: Icon, label, accent }, index) => (
             <div
-              key={label}
+              key={`${label}-${index}`}
               className={cn(
                 'bg-card/80 backdrop-blur-md shadow-sm border border-border inline-flex items-center gap-2 px-4 py-2 rounded-full text-[13px]',
                 accent ? 'text-fg' : 'text-muted'

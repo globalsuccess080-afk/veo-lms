@@ -17,8 +17,6 @@ export async function updateProgress(
   const alreadyCompleted = existing?.isCompleted === true
   const safeTotal = totalSeconds > 0 ? totalSeconds : existing?.totalSeconds || 0
 
-  // Completion is sticky: once a lesson is completed it never reverts to
-  // incomplete from later periodic saves (replays, resumes, etc).
   const completed =
     alreadyCompleted || isCompleted === true || (safeTotal > 0 && watchedSeconds / safeTotal >= 0.9)
 
@@ -41,10 +39,8 @@ export async function updateProgress(
     await Enrollment.findOneAndUpdate({ userId, courseId }, { progress: percent })
   }
 
-  // Update Learning Streak
   if (completed || watchedSeconds >= 180) {
-    // Fire and forget so we don't block progress update
-    updateLearningStreak(userId).catch(console.error)
+    void updateLearningStreak(userId).catch(() => undefined)
   }
 
   return {

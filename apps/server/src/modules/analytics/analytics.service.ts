@@ -12,7 +12,6 @@ const completedPaymentStatuses = ['COMPLETED', 'paid']
 export async function getDashboard(userId: string, range: string) {
     const cacheKey = `analytics:tenant:${userId}:${range}`
     
-    // Attempt cache hit
     const cached = await redis.get(cacheKey)
     if (cached) {
         try {
@@ -42,8 +41,6 @@ export async function getDashboard(userId: string, range: string) {
             break
     }
 
-    // --- AGGREGATIONS ---
-
     const [
         revenueData,
         studentsData,
@@ -58,7 +55,6 @@ export async function getDashboard(userId: string, range: string) {
         couponStats,
         lessonAnalytics
     ] = await Promise.all([
-        // Revenue (Total, This Range)
         Payment.aggregate([
             { $match: { status: { $in: completedPaymentStatuses } } },
             { $group: { 
@@ -69,7 +65,6 @@ export async function getDashboard(userId: string, range: string) {
             }}
         ]),
 
-        // Students
         User.aggregate([
             { $match: { role: 'student' } },
             { $group: {
@@ -79,7 +74,6 @@ export async function getDashboard(userId: string, range: string) {
             }}
         ]),
 
-        // Courses
         Course.aggregate([
             { $group: {
                 _id: null,
@@ -89,7 +83,6 @@ export async function getDashboard(userId: string, range: string) {
             }}
         ]),
 
-        // Engagement (Watch Time, Lessons Completed)
         Progress.aggregate([
             { $group: {
                 _id: null,
@@ -98,7 +91,6 @@ export async function getDashboard(userId: string, range: string) {
             }}
         ]),
 
-        // Revenue Trends
         Payment.aggregate([
             { $match: { status: { $in: completedPaymentStatuses }, createdAt: { $gte: startDate } } },
             { $group: { 
@@ -108,7 +100,6 @@ export async function getDashboard(userId: string, range: string) {
             { $sort: { _id: 1 } }
         ]),
 
-        // Revenue Breakdown: Category
         Payment.aggregate([
             { $match: { status: { $in: completedPaymentStatuses }, createdAt: { $gte: startDate } } },
             { $lookup: { from: 'courses', localField: 'courseId', foreignField: '_id', as: 'course' } },
@@ -117,7 +108,6 @@ export async function getDashboard(userId: string, range: string) {
             { $sort: { revenue: -1 } }
         ]),
 
-        // Revenue Breakdown: Coupon
         Payment.aggregate([
             { $match: { status: { $in: completedPaymentStatuses }, createdAt: { $gte: startDate }, couponCode: { $ne: null } } },
             { $group: { _id: '$couponCode', revenue: { $sum: '$amount' }, usageCount: { $sum: 1 } } },
@@ -125,7 +115,6 @@ export async function getDashboard(userId: string, range: string) {
             { $limit: 10 }
         ]),
 
-        // Student Growth
         User.aggregate([
             { $match: { role: 'student', createdAt: { $gte: startDate } } },
             { $group: { 
@@ -135,10 +124,8 @@ export async function getDashboard(userId: string, range: string) {
             { $sort: { _id: 1 } }
         ]),
 
-        // Announcements
         mongoose.model('Announcement').countDocuments({ createdAt: { $gte: startDate } }),
 
-        // Top Performing Courses & Funnel
         Course.aggregate([
             { $lookup: { from: 'payments', localField: '_id', foreignField: 'courseId', as: 'payments' } },
             { $lookup: { from: 'enrollments', localField: '_id', foreignField: 'courseId', as: 'enrollments' } },
@@ -163,7 +150,6 @@ export async function getDashboard(userId: string, range: string) {
             { $limit: 10 }
         ]),
 
-        // Coupon Global Stats
         CouponUsage.aggregate([
             { $group: {
                 _id: '$couponCode',
@@ -174,7 +160,6 @@ export async function getDashboard(userId: string, range: string) {
             { $limit: 5 }
         ]),
 
-        // In-depth Lesson Analytics
         Progress.aggregate([
             { $group: {
                 _id: '$lessonId',
@@ -207,8 +192,6 @@ export async function getDashboard(userId: string, range: string) {
     const orderCount = revenueData[0]?.countRange || 0
     const avgOrderValue = orderCount > 0 ? (rangeRev / orderCount).toFixed(0) : 0
 
-    // Completion rate overall calculation
-    // Average progress of all enrollments
     const completionStats = await Enrollment.aggregate([
         { $group: { _id: null, avgProgress: { $avg: '$progress' } } }
     ])
@@ -219,7 +202,7 @@ export async function getDashboard(userId: string, range: string) {
                 total: totalRev,
                 range: rangeRev,
                 avgOrderValue,
-                growth: 0 // Would require previous period comparison
+                growth: 0
             },
             students: {
                 total: studentsData[0]?.total || 0,
@@ -276,7 +259,6 @@ export async function getDashboard(userId: string, range: string) {
         }))
     }
 
-    // Cache for 15 minutes (900 seconds)
     await redis.setex(cacheKey, 900, JSON.stringify(dashboardData))
 
     return dashboardData

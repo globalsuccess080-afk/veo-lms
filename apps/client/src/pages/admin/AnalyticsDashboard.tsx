@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { IndianRupee, Users, BookOpen, TrendingUp, Upload, Filter, Megaphone, Search, ArrowUpDown } from 'lucide-react'
 import { 
@@ -25,7 +25,7 @@ import { Card } from '../../components/ui/Card'
 import { Dropdown } from '../../components/ui/Dropdown'
 import { Input } from '../../components/ui/Input'
 import { Badge } from '../../components/ui/Badge'
-import { formatINR, cn } from '../../lib/utils'
+import { formatINR } from '../../lib/utils'
 import { ExportMenu } from '../../components/admin/ExportMenu'
 import { ImportModal } from '../../components/admin/ImportModal'
 import { handleExportData } from '../../utils/exportUtils'
@@ -138,7 +138,7 @@ export function AnalyticsDashboard() {
       ]
       handleExportData(fullData, exportColumns, format, 'courses_export')
       toast.success('Export complete')
-    } catch (err) {
+    } catch {
       toast.error('Failed to export data')
     }
   }
@@ -200,7 +200,7 @@ export function AnalyticsDashboard() {
   const couponsColumns: ColumnDef<any, any>[] = [
     { accessorKey: 'code', header: 'Code', cell: info => <Badge tone="primary">{info.getValue() as string}</Badge> },
     { accessorKey: 'uses', header: 'Uses', cell: info => <span className="text-muted font-medium">{info.getValue() as number}</span> },
-    { accessorKey: 'totalDiscount', header: 'Discount', cell: info => <span className="text-danger font-bold">-{formatINR((info.getValue() as number) / 100)}</span> }
+    { accessorKey: 'totalDiscount', header: 'Discount', cell: info => <span className="text-danger font-bold">-{formatINR(info.getValue() as number)}</span> }
   ]
 
   const leaderboardColumns: ColumnDef<any, any>[] = [
@@ -258,7 +258,6 @@ export function AnalyticsDashboard() {
       />
 
       <motion.div initial="hidden" animate="show" variants={containerVars}>
-        {/* KPI CARDS */}
         <motion.div variants={itemVars} className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
           {statCards.map((c) => (
             <Card key={c.label} className="p-6 flex flex-col justify-between border-line/50 hover:shadow-md transition-all group hover:-translate-y-1 relative overflow-hidden">
@@ -277,7 +276,6 @@ export function AnalyticsDashboard() {
           ))}
         </motion.div>
 
-        {/* CHARTS */}
         <motion.div variants={itemVars} className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <Card className="p-6 border-line/50 lg:col-span-2">
             <h3 className="text-lg font-bold text-fg mb-6">Revenue Trend</h3>
@@ -318,7 +316,6 @@ export function AnalyticsDashboard() {
           </Card>
         </motion.div>
 
-        {/* TABLES ROW 1 */}
         <motion.div variants={itemVars} className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <Card className="p-6 border-line/50 lg:col-span-2 overflow-hidden flex flex-col">
             <h3 className="text-lg font-bold text-fg mb-4">Top Performing Courses</h3>
@@ -334,7 +331,6 @@ export function AnalyticsDashboard() {
           </Card>
         </motion.div>
 
-        {/* TABLES ROW 2 */}
         <motion.div variants={itemVars} className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
           <Card className="p-6 border-line/50 lg:col-span-2 overflow-hidden flex flex-col">
             <h3 className="text-lg font-bold text-fg mb-4">In-Depth Lesson Analytics</h3>

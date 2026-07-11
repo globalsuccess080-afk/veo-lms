@@ -53,7 +53,6 @@ const coupon_model_1 = require("../coupon/coupon.model");
 const coupon_service_1 = require("../coupon/coupon.service");
 const notification_model_1 = require("../notification/notification.model");
 const apiError_1 = require("../../utils/apiError");
-const logger_1 = require("../../utils/logger");
 const assetPath_1 = require("../../utils/assetPath");
 exports.PAYMENTS_MOCK = !env_1.env.RAZORPAY_KEY_ID ||
     !env_1.env.RAZORPAY_KEY_SECRET ||
@@ -77,9 +76,6 @@ function verifyWebhookSignature(rawBody, signature) {
     const webhookSecret = env_1.env.RAZORPAY_WEBHOOK_SECRET || env_1.env.RAZORPAY_KEY_SECRET;
     if (!webhookSecret || webhookSecret === 'xxx')
         throw new apiError_1.ApiError(503, 'Payment webhook verification is not configured');
-    if (!env_1.env.RAZORPAY_WEBHOOK_SECRET) {
-        logger_1.logger.warn('RAZORPAY_WEBHOOK_SECRET is missing; falling back to RAZORPAY_KEY_SECRET for webhook verification');
-    }
     if (!signature)
         throw new apiError_1.ApiError(400, 'Missing Razorpay webhook signature');
     const expected = crypto_1.default.createHmac('sha256', webhookSecret).update(rawBody).digest('hex');
@@ -140,7 +136,6 @@ async function finalizeEnrollment(userId, payment, session) {
     return { courseSlug: course?.slug };
 }
 async function createOrder(userId, courseId, couponCode) {
-    logger_1.logger.debug(`[createOrder] Received couponCode: "${couponCode}" for course: ${courseId}`);
     const course = await course_model_1.Course.findById(courseId);
     if (!course)
         throw new apiError_1.ApiError(404, 'Course not found');
@@ -162,27 +157,22 @@ async function createOrder(userId, courseId, couponCode) {
         appliedCouponCode = couponCode.toUpperCase().trim();
     }
     const amount = Math.round(finalAmount * 100);
-    logger_1.logger.debug(`[createOrder] originalAmount: ${originalAmount}, finalAmount: ${finalAmount}, amount (paise): ${amount}`);
     let orderId = `mock_order_${crypto_1.default.randomBytes(8).toString('hex')}`;
     if (!exports.PAYMENTS_MOCK) {
         if (amount > 0) {
             try {
-                logger_1.logger.debug(`[createOrder] Calling Razorpay with amount: ${amount}`);
                 const receiptId = `rcpt_${crypto_1.default.randomBytes(8).toString('hex')}`;
                 const rzpOrder = await razorpay?.orders.create({ amount, currency: 'INR', receipt: receiptId });
                 if (rzpOrder) {
                     orderId = rzpOrder.id;
-                    logger_1.logger.debug(`[createOrder] Razorpay order created: ${orderId}`);
                 }
             }
             catch (err) {
-                console.error(`[createOrder Debug] Razorpay orders.create ERROR:`, err);
                 throw new apiError_1.ApiError(500, `Razorpay error: ${err?.message || 'Unknown payment gateway error'}`);
             }
         }
         else {
             orderId = `free_order_${crypto_1.default.randomBytes(8).toString('hex')}`;
-            logger_1.logger.debug(`[createOrder] Free order generated: ${orderId}`);
         }
     }
     await payment_model_1.Payment.create({

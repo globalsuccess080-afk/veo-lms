@@ -42,7 +42,7 @@
 - [Video Pipeline](#-video-pipeline) 
 - [Authentication Flow](#-authentication-flow)
 - [Payment Flow](#-payment-flow)
-- [Folder Structure](#-folder-structure)
+- [Folder Structure](#-folder-structure) *(⭐ Must See)*
 - [API Documentation](#-api-documentation)
 - [Database Design](#-database-design)
 - [Security Highlights](#-security-highlights) *(⭐ Must See)*
@@ -496,6 +496,12 @@ sequenceDiagram
 
 ## 📁 Folder Structure
 
+> **Must see:** The full project structure design is documented in [`apps/architecture/project-structure.md`](apps/architecture/project-structure.md). It explains why this project uses a monorepo and why the backend follows feature-based modules.
+
+This project uses an **npm Workspaces monorepo** because VeoLMS is not only a frontend or only an API. It has a student/admin React app, an Express API, BullMQ workers, shared validation/types, and architecture documents that must stay connected. Keeping them in one repository makes local development simple, keeps frontend and backend changes in sync, avoids duplicate DTO/schema definitions through `packages/shared`, and makes deployment easier because Railway/Vercel can build from the same source of truth.
+
+The `apps/` folder separates the real runnable applications: `client` for the LMS interface, `server` for APIs and background jobs, and `architecture` for the system design documents. The `packages/` folder is reserved for code shared across apps, so common types and validation logic can be reused without copy-paste.
+
 ```
 veolms/                          <- npm Workspaces root
 ├── apps/
@@ -914,6 +920,7 @@ All design documentation lives in [`apps/architecture/`](apps/architecture/) —
 | Document | Purpose | When to Read |
 |---|---|---|
 | [`system-design-hld.md`](apps/architecture/system-design-hld.md) | All 6 architecture layers with trade-offs | **Start here** |
+| [`project-structure.md`](apps/architecture/project-structure.md) | Monorepo layout, app/package boundaries, feature-based backend modules | **Must see for code navigation** |
 | [`authentication-security-design.md`](apps/architecture/authentication-security-design.md) | RSA+AES encryption, JWT, OTP flow, RBAC, video JWT deep dive | Security review |
 | [`feature-design-lld.md`](apps/architecture/feature-design-lld.md) | Module-level design: auth, video pipeline, progress, coupons, admin export | Code review |
 | [`database-design-document.md`](apps/architecture/database-design-document.md) | Schema decisions, indexing strategy, denormalization rationale | DB review |

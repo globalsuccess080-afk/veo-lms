@@ -57,8 +57,8 @@ export function ProfilePage() {
   const { mode, accent, radiusVariant, setMode, setAccent, setRadiusVariant } = useThemeStore()
   const [name, setName] = useState(user?.name || '')
   const [pw, setPw] = useState({ current: '', next: '' })
-  const { data: certificates = [] } = useQuery<Certificate[]>({ queryKey: ['my-certificates'], queryFn: getMyCertificates, enabled: !!user })
-  const { data: payments = [] } = useQuery<PaymentHistoryItem[]>({ queryKey: ['payment-history'], queryFn: getPaymentHistory, enabled: !!user })
+  const { data: rawCertificates } = useQuery<Certificate[]>({ queryKey: ['my-certificates'], queryFn: getMyCertificates, enabled: !!user })
+  const { data: rawPayments } = useQuery<PaymentHistoryItem[]>({ queryKey: ['payment-history'], queryFn: getPaymentHistory, enabled: !!user })
 
   const profileMut = useMutation({
     mutationFn: () => updateProfile(name),
@@ -80,6 +80,8 @@ export function ProfilePage() {
 
   if (!user) return <ProfileSkeleton />
 
+  const certificates = Array.isArray(rawCertificates) ? rawCertificates : []
+  const payments = Array.isArray(rawPayments) ? rawPayments : []
   const completedPayments = payments.filter((payment) => payment.status === 'COMPLETED')
   const totalSpent = completedPayments.reduce((sum, payment) => sum + paymentAmount(payment), 0)
   const latestCertificate = certificates[0]

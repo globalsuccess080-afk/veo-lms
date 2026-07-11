@@ -2,10 +2,16 @@ import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Award, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 import { getPublicCertificate } from '../../services/certificate.service'
 import { PageWrapper } from '../../components/layout/PageWrapper'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+
+function getReadableError(err: unknown, fallback: string) {
+  const error = err as { response?: { data?: { message?: string } }, message?: string }
+  return error.response?.data?.message || error.message || fallback
+}
 
 export function PublicCertificatePage() {
   const { certificateId } = useParams<{ certificateId: string }>()
@@ -23,15 +29,18 @@ export function PublicCertificatePage() {
       setIsDownloading(true)
       const { requestPdfDownload } = await import('../../services/certificate.service')
       const res = await requestPdfDownload(certificateId!)
-      const binaryString = window.atob((res as any).data)
+      if (!res.data) {
+        throw new Error('The certificate PDF was not returned. Please try again.')
+      }
+      const binaryString = window.atob(res.data)
       const bytes = new Uint8Array(binaryString.length)
       for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i)
       const blob = new Blob([bytes], { type: 'application/pdf' })
       const blobUrl = URL.createObjectURL(blob)
       window.open(blobUrl, '_blank')
       setTimeout(() => URL.revokeObjectURL(blobUrl), 10000)
-    } catch (e) {
-      console.error(e)
+    } catch (e: unknown) {
+      toast.error(getReadableError(e, 'We could not create the PDF right now. Please try again in a moment.'))
     } finally {
       setIsDownloading(false)
     }

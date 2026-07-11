@@ -71,7 +71,7 @@ export function LoginPage() {
       navigate(redirect || '/dashboard', { replace: true })
     } catch (err) {
       const e = err as { response?: { data?: { message?: string } } }
-      toast.error(e.response?.data?.message || 'Invalid email or password')
+      toast.error(e.response?.data?.message || 'The email or password you entered is incorrect.')
     } finally {
       setLoading(false)
     }

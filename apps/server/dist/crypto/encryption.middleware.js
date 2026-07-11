@@ -13,7 +13,12 @@ function globalEncryptionMiddleware(req, res, next) {
         req.headers['content-type']?.includes('multipart/form-data')) {
         return next();
     }
-    const { encryptedKey, data, iv, tag } = req.body;
+    const { encryptedKey, data, iv, tag } = req.body || {};
+    const hasEncryptedPayload = Boolean(encryptedKey || data || iv || tag);
+    const hasPlainPayload = Boolean(req.body && Object.keys(req.body).length > 0);
+    if (!hasEncryptedPayload && !hasPlainPayload) {
+        return next();
+    }
     if (!encryptedKey || !data || !iv || !tag) {
         return next(new apiError_1.ApiError(400, 'Invalid encrypted payload format'));
     }

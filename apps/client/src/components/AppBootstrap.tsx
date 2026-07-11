@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
 import { useAuthStore } from '../store/authStore'
 import { getMe } from '../services/auth.service'
 import { PageLoader } from './ui/Spinner'
-const API = import.meta.env.VITE_API_URL || '/api'
+import api from '../lib/api'
 
 export function AppBootstrap({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false)
@@ -13,7 +12,7 @@ export function AppBootstrap({ children }: { children: React.ReactNode }) {
     let active = true
     ;(async () => {
       try {
-        const { data } = await axios.post(`${API}/auth/refresh`, {}, { withCredentials: true })
+        const { data } = await api.post('/auth/refresh', {})
         if (!active) return
         setToken(data.data.accessToken)
         const user = await getMe()

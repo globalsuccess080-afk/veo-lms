@@ -7,9 +7,14 @@ import { Link, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { PageWrapper } from '../../components/layout/PageWrapper'
 import { Button } from '../../components/ui/Button'
-import { generateCertificate, getCourseCertificate, pollPdfJobStatus, requestPdfDownload } from '../../services/certificate.service'
+import { generateCertificate, getCourseCertificate, requestPdfDownload } from '../../services/certificate.service'
 import { getCourse, getCurriculum } from '../../services/course.service'
 import { getCourseProgress } from '../../services/progress.service'
+
+function getReadableError(err: unknown, fallback: string) {
+    const error = err as { response?: { data?: { message?: string } }, message?: string }
+    return error.response?.data?.message || error.message || fallback
+}
 
 export function CertificateViewPage() {
     const { slug } = useParams<{ slug: string }>()
@@ -17,7 +22,6 @@ export function CertificateViewPage() {
     const [cardSize, setCardSize] = useState({ width: 0, height: 0 })
     const [isPolling, setIsPolling] = useState(false)
     const [pollCount, setPollCount] = useState(0)
-    const [downloadJobId, setDownloadJobId] = useState<string | null>(null)
     const [downloadAction, setDownloadAction] = useState<'download' | 'view'>('download')
     const [copied, setCopied] = useState(false)
     const confettiShownRef = useRef(false)
@@ -79,7 +83,7 @@ export function CertificateViewPage() {
     const { mutate: handleGenerate, isPending: isGenerating } = useMutation({
         mutationFn: () => generateCertificate(course!.id),
         onSuccess: () => { setIsPolling(true); setPollCount(0) },
-        onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to generate certificate'),
+        onError: (err: unknown) => toast.error(getReadableError(err, 'We could not generate your certificate. Please try again.')),
     })
 
     const [isDownloading, setIsDownloading] = useState(false)
@@ -90,8 +94,11 @@ export function CertificateViewPage() {
             setIsDownloading(true)
             const res = await requestPdfDownload(certificate!.certificateId)
             
-            // res contains the base64 pdf data directly now
-            const binaryString = window.atob((res as any).data)
+            if (!res.data) {
+                throw new Error('The certificate PDF was not returned. Please try again.')
+            }
+
+            const binaryString = window.atob(res.data)
             const bytes = new Uint8Array(binaryString.length)
             for (let i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i)
             const blob = new Blob([bytes], { type: 'application/pdf' })
@@ -109,8 +116,8 @@ export function CertificateViewPage() {
             }
             setTimeout(() => URL.revokeObjectURL(blobUrl), 10000)
             
-        } catch (err: any) {
-            toast.error(err.response?.data?.message || 'Failed to generate PDF')
+        } catch (err: unknown) {
+            toast.error(getReadableError(err, 'We could not create the PDF right now. Please try again in a moment.'))
         } finally {
             setIsDownloading(false)
         }

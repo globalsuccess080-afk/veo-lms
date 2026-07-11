@@ -12,7 +12,7 @@ export interface Certificate {
 }
 
 export async function generateCertificate(courseId: string) {
-  const { data } = await api.post(`/certificates/generate/${courseId}`)
+  const { data } = await api.post(`/certificates/generate/${courseId}`, {})
   return data
 }
 
@@ -42,11 +42,11 @@ export async function getAdminCertificates(): Promise<Certificate[]> {
 }
 
 export async function revokeCertificate(certificateId: string): Promise<void> {
-  await api.post(`/certificates/${certificateId}/revoke`)
+  await api.post(`/certificates/${certificateId}/revoke`, {})
 }
 
-export async function requestPdfDownload(certificateId: string): Promise<{ jobId: string }> {
-  const { data } = await api.post(`/certificates/${certificateId}/download-request`)
+export async function requestPdfDownload(certificateId: string): Promise<{ data: string }> {
+  const { data } = await api.post(`/certificates/${certificateId}/download-request`, {})
   return data.data
 }
 

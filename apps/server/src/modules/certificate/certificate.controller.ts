@@ -10,6 +10,7 @@ import { Lesson } from '../lesson/lesson.model'
 import { ApiError } from '../../utils/apiError'
 import { env } from '../../config/env'
 import { generatePDF } from './certificate.generator'
+import { logger } from '../../utils/logger'
 
 function generateCertificateId(): string {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -105,7 +106,12 @@ export const requestPdfGeneration = asyncHandler(async (req, res) => {
       certId: cert.certificateId,
       publicUrl
     })
-  } catch {
+  } catch (err) {
+    logger.error('Certificate PDF generation failed', {
+      certificateId: cert.certificateId,
+      error: err instanceof Error ? err.message : err,
+      stack: err instanceof Error ? err.stack : undefined,
+    })
     throw new ApiError(500, 'We could not create the PDF right now. Please try again in a moment.')
   }
   
@@ -128,6 +134,7 @@ export const getPublicCertificate = [
       studentName: (cert.userId as any).name,
       courseName: (cert.courseId as any).title,
       issuedAt: cert.issuedAt,
+      status: cert.status,
     })
   }),
 ]

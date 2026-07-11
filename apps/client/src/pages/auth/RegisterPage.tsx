@@ -113,7 +113,7 @@ export function RegisterPage() {
       setTimeLeft(60) // Allow resend after 60s
     } catch (err) {
       const e = err as { response?: { data?: { message?: string } } }
-      toast.error(e.response?.data?.message || 'Failed to send OTP. Please try again.')
+      toast.error(e.response?.data?.message || 'We could not send the OTP. Please check your email address and try again.')
     } finally {
       setLoading(false)
     }
@@ -136,7 +136,7 @@ export function RegisterPage() {
       navigate(redirect || '/dashboard', { replace: true })
     } catch (err) {
       const e = err as { response?: { data?: { message?: string } } }
-      toast.error(e.response?.data?.message || 'Registration failed. Please check OTP.')
+      toast.error(e.response?.data?.message || 'The OTP is incorrect or has expired. Please check the code or request a new OTP.')
     } finally {
       setLoading(false)
     }

@@ -2,6 +2,17 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.validate = validate;
 const apiError_1 = require("../utils/apiError");
+const FIELD_LABELS = {
+    email: 'Email',
+    password: 'Password',
+    newPassword: 'New password',
+    otp: 'OTP',
+    name: 'Name',
+};
+function formatValidationPath(path) {
+    const key = path.join('.');
+    return FIELD_LABELS[key] || FIELD_LABELS[String(path[0])] || key;
+}
 /**
  * Recursively sanitizes objects by removing keys that start with '$'
  * to prevent NoSQL injection via MongoDB operators.
@@ -31,7 +42,12 @@ function validate(schema, source = 'body') {
         const result = schema.safeParse(req[source]);
         if (!result.success) {
             // Map Zod errors into a readable string
-            const errorMessage = result.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+            const errorMessage = result.error.errors
+                .map((e) => {
+                const label = formatValidationPath(e.path);
+                return label ? `${label}: ${e.message}` : e.message;
+            })
+                .join(', ');
             throw new apiError_1.ApiError(400, errorMessage);
         }
         // Assign validated and stripped data back to request

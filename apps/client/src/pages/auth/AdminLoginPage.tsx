@@ -35,7 +35,7 @@ export function AdminLoginPage() {
       navigate('/admin')
     } catch (err) {
       const e = err as { response?: { data?: { message?: string } } }
-      toast.error(e.response?.data?.message || 'Invalid admin credentials')
+      toast.error(e.response?.data?.message || 'The admin email or password you entered is incorrect.')
     } finally {
       setLoading(false)
     }

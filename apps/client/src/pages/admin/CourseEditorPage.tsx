@@ -30,6 +30,7 @@ const LEVEL_OPTIONS = [
 
 type VideoSource = 'youtube' | 'upload'
 const emptyLesson = { title: '', description: '', source: 'upload' as VideoSource, youtubeUrl: '', fileUrl: '', duration: 0, isPreview: false, pendingFile: null as File | null }
+type DraftUploadState = { pct: number; stage: string; fileName: string } | null
 
 const containerVars: Variants = {
     hidden: { opacity: 0 },
@@ -148,6 +149,8 @@ export function CourseEditorPage() {
     const [newSection, setNewSection] = useState('')
     const [lessonForm, setLessonForm] = useState(emptyLesson)
     const [adding, setAdding] = useState(false)
+    const [draftUpload, setDraftUpload] = useState<DraftUploadState>(null)
+    const draftUploadFallbackTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
     const [draggedSectionId, setDraggedSectionId] = useState<string | null>(null)
     const [dragOverSectionId, setDragOverSectionId] = useState<string | null>(null)
@@ -272,10 +275,37 @@ export function CourseEditorPage() {
         }
     })
 
-    const resetLessonForm = () => setLessonForm(emptyLesson)
+    const stopDraftUploadFallback = () => {
+        if (draftUploadFallbackTimer.current) {
+            clearInterval(draftUploadFallbackTimer.current)
+            draftUploadFallbackTimer.current = null
+        }
+    }
+
+    const startDraftUploadFallback = () => {
+        stopDraftUploadFallback()
+        draftUploadFallbackTimer.current = setInterval(() => {
+            setDraftUpload((current) => {
+                if (!current || current.pct >= 92) return current
+                return {
+                    ...current,
+                    pct: Math.min(92, current.pct + (current.pct < 40 ? 3 : 1)),
+                }
+            })
+        }, 900)
+    }
+
+    useEffect(() => () => stopDraftUploadFallback(), [])
+
+    const resetLessonForm = () => {
+        stopDraftUploadFallback()
+        setDraftUpload(null)
+        setLessonForm(emptyLesson)
+    }
 
     const handleAddLesson = async (sectionId: string) => {
         if (!lessonForm.title) return toast.error('Add a lecture title')
+        const pendingFile = lessonForm.source === 'upload' ? lessonForm.pendingFile : null
 
         let youtubeUrl = ''
         if (lessonForm.source === 'youtube') {
@@ -285,6 +315,11 @@ export function CourseEditorPage() {
         }
 
         setAdding(true)
+        if (pendingFile) {
+            setDraftUpload({ pct: 1, stage: 'Preparing upload...', fileName: pendingFile.name })
+            startDraftUploadFallback()
+        }
+
         try {
             const createdLesson = await createLesson(id!, sectionId, {
                 title: lessonForm.title,
@@ -296,15 +331,23 @@ export function CourseEditorPage() {
                 order: 0
             })
 
-            if (lessonForm.source === 'upload' && lessonForm.pendingFile) {
-                toast.info('Lecture created, starting video upload...')
-                await uploadVideo(lessonForm.pendingFile, createdLesson.id)
-                if (!course) throw new Error('Course context missing for upload job')
+            if (pendingFile) {
+                setDraftUpload({ pct: 1, stage: 'Uploading video...', fileName: pendingFile.name })
+                const uploadResult = await uploadVideo(pendingFile, createdLesson.id, (pct) => {
+                    setDraftUpload({
+                        pct: Math.max(1, Math.min(99, pct)),
+                        stage: 'Uploading video...',
+                        fileName: pendingFile.name,
+                    })
+                })
+                stopDraftUploadFallback()
+                setDraftUpload({ pct: 100, stage: 'Upload complete. Starting processing...', fileName: pendingFile.name })
                 useProcessingStore.getState().addJob({
                     lessonId: createdLesson.id,
-                    courseId: course.id,
-                    courseTitle: course.title,
-                    lessonTitle: lessonForm.title
+                    courseId: course?.id || id!,
+                    courseTitle: course?.title || form.title || 'Untitled course',
+                    lessonTitle: lessonForm.title,
+                    jobId: uploadResult.jobId,
                 })
             }
 
@@ -312,8 +355,10 @@ export function CourseEditorPage() {
             queryClient.invalidateQueries({ queryKey: ['lessons', id] })
             resetLessonForm()
             toast.success('Lecture added')
-        } catch {
-            toast.error('Failed to add lecture')
+        } catch (err: any) {
+            stopDraftUploadFallback()
+            setDraftUpload(null)
+            toast.error(err.response?.data?.message || 'Failed to add lecture')
         } finally {
             setAdding(false)
         }
@@ -558,6 +603,7 @@ export function CourseEditorPage() {
                                                                         lessonForm={lessonForm}
                                                                         setLessonForm={setLessonForm}
                                                                         adding={adding}
+                                                                        draftUpload={draftUpload}
                                                                         onCancel={() => { setActiveSection(null); resetLessonForm() }}
                                                                         onSubmit={() => handleAddLesson(section._id)}
                                                                     />
@@ -588,7 +634,7 @@ export function CourseEditorPage() {
 
 interface VideoFieldsValue { source: VideoSource; youtubeUrl: string; fileUrl: string; duration: number; pendingFile?: File | null }
 
-function VideoFields({ value, onPatch, replaceConfirm, lessonId, courseId, courseTitle, lessonTitle }: {
+function VideoFields({ value, onPatch, replaceConfirm, lessonId, courseId, courseTitle, lessonTitle, draftUpload, disabled }: {
     value: VideoFieldsValue
     onPatch: (patch: Partial<VideoFieldsValue>) => void
     replaceConfirm?: boolean
@@ -596,6 +642,8 @@ function VideoFields({ value, onPatch, replaceConfirm, lessonId, courseId, cours
     courseId?: string
     courseTitle?: string
     lessonTitle?: string
+    draftUpload?: DraftUploadState
+    disabled?: boolean
 }) {
     const mins = Math.floor((value.duration || 0) / 60)
     const secs = (value.duration || 0) % 60
@@ -606,10 +654,10 @@ function VideoFields({ value, onPatch, replaceConfirm, lessonId, courseId, cours
         <div>
             <Label>Video source</Label>
             <div className="flex gap-2.5 mb-4">
-                <button type="button" onClick={() => onPatch({ source: 'upload' })} className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold border-b-2 transition-all', value.source === 'upload' ? 'border-primary bg-primary-subtle text-primary' : 'border-transparent bg-surface2/50 text-muted hover:text-fg')}>
+                <button type="button" disabled={disabled} onClick={() => onPatch({ source: 'upload' })} className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold border-b-2 transition-all disabled:opacity-60 disabled:pointer-events-none', value.source === 'upload' ? 'border-primary bg-primary-subtle text-primary' : 'border-transparent bg-surface2/50 text-muted hover:text-fg')}>
                     <Upload size={16} strokeWidth={2.5} /> Upload video
                 </button>
-                <button type="button" onClick={() => onPatch({ source: 'youtube' })} className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold border-b-2 transition-all', value.source === 'youtube' ? 'border-primary bg-primary-subtle text-primary' : 'border-transparent bg-surface2/50 text-muted hover:text-fg')}>
+                <button type="button" disabled={disabled} onClick={() => onPatch({ source: 'youtube' })} className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-[13px] font-bold border-b-2 transition-all disabled:opacity-60 disabled:pointer-events-none', value.source === 'youtube' ? 'border-primary bg-primary-subtle text-primary' : 'border-transparent bg-surface2/50 text-muted hover:text-fg')}>
                     <Youtube size={16} strokeWidth={2.5} /> YouTube URL
                 </button>
             </div>
@@ -633,6 +681,35 @@ function VideoFields({ value, onPatch, replaceConfirm, lessonId, courseId, cours
             ) : (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
                     {!lessonId ? (
+                        draftUpload ? (
+                            <div className="rounded-2xl border border-line bg-canvas overflow-hidden">
+                                <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-line bg-primary/5">
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <Loader2 size={15} className="text-primary animate-spin shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="text-[13px] font-bold text-fg">Uploading video...</p>
+                                            <p className="text-[11px] text-muted truncate">{draftUpload.fileName}</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-[12px] font-bold tabular-nums text-primary shrink-0">{Math.round(draftUpload.pct)}%</span>
+                                </div>
+
+                                <div className="px-4 py-3">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-[11px] text-muted font-medium">{draftUpload.stage}</span>
+                                        <span className="text-[10px] text-muted">Keep this page open</span>
+                                    </div>
+                                    <div className="h-2 rounded-full bg-surface2 overflow-hidden">
+                                        <motion.div
+                                            className="h-full rounded-full bg-gradient-to-r from-primary/60 to-primary"
+                                            animate={{ width: `${draftUpload.pct}%` }}
+                                            transition={{ duration: 0.3, ease: 'easeOut' }}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-muted/60 mt-2">Processing will start automatically after the upload finishes.</p>
+                                </div>
+                            </div>
+                        ) : (
                         <div className="p-4 bg-surface2 rounded-xl border border-dashed border-line-strong text-center flex flex-col items-center justify-center py-6 hover:bg-surface2/80 transition-colors">
                             <input type="file" id="draft-video" className="hidden" accept="video/mp4,video/webm,video/quicktime,video/x-matroska" onChange={(e) => {
                                 const file = e.target.files?.[0]
@@ -650,6 +727,7 @@ function VideoFields({ value, onPatch, replaceConfirm, lessonId, courseId, cours
                                 </span>
                             </label>
                         </div>
+                        )
                     ) : (
                         <>
                             <VideoUpload
@@ -675,11 +753,12 @@ function VideoFields({ value, onPatch, replaceConfirm, lessonId, courseId, cours
 }
 
 function LessonComposer({
-    lessonForm, setLessonForm, adding, onCancel, onSubmit
+    lessonForm, setLessonForm, adding, draftUpload, onCancel, onSubmit
 }: {
     lessonForm: typeof emptyLesson
     setLessonForm: React.Dispatch<React.SetStateAction<typeof emptyLesson>>
     adding: boolean
+    draftUpload: DraftUploadState
     onCancel: () => void
     onSubmit: () => void
 }) {
@@ -700,7 +779,7 @@ function LessonComposer({
                 </Field>
             </div>
 
-            <VideoFields value={lessonForm} onPatch={patch} />
+            <VideoFields value={lessonForm} onPatch={patch} draftUpload={draftUpload} disabled={adding} />
 
             <div className="flex items-center justify-between mt-6 pt-4 border-t border-line/50">
                 <label className="flex items-center gap-2.5 text-[14px] font-bold cursor-pointer group">
@@ -711,7 +790,7 @@ function LessonComposer({
                     <span className="flex items-center gap-1.5"><Eye size={16} className="text-success" /> Free preview</span>
                 </label>
                 <div className="flex gap-2.5">
-                    <Button variant="ghost" size="sm" onClick={onCancel} className="font-bold">Cancel</Button>
+                    <Button variant="ghost" size="sm" onClick={onCancel} disabled={adding} className="font-bold">Cancel</Button>
                     <Button size="sm" onClick={onSubmit} loading={adding} disabled={!canSubmit} className="font-bold shadow-soft px-4">Add lecture</Button>
                 </div>
             </div>

@@ -22,7 +22,7 @@ export async function adminLogin(email: string, password: string) {
 }
 
 export async function logout() {
-  await api.post('/auth/logout')
+  await api.post('/auth/logout', {})
 }
 
 export async function getMe() {

@@ -58,7 +58,7 @@ export function ForgotPasswordPage() {
       toast.success('OTP sent to your email')
       setStep(2)
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to send OTP')
+      toast.error(err.response?.data?.message || 'We could not send the reset OTP. Please check your email address and try again.')
     } finally {
       setLoading(false)
     }
@@ -84,7 +84,7 @@ export function ForgotPasswordPage() {
       toast.success('Password reset successfully! Please log in.')
       navigate('/login', { replace: true })
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Failed to reset password')
+      toast.error(err.response?.data?.message || 'The OTP is incorrect or has expired. Please check the code or request a new OTP.')
     } finally {
       setLoading(false)
     }

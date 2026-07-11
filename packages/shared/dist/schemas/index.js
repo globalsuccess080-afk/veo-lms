@@ -3,22 +3,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.announcementSchema = exports.updateProgressSchema = exports.paymentStatusParamsSchema = exports.createOrderSchema = exports.updateLessonSchema = exports.createLessonSchema = exports.createSectionSchema = exports.updateCourseSchema = exports.createCourseSchema = exports.resetPasswordSchema = exports.forgotPasswordSchema = exports.loginSchema = exports.registerSchema = void 0;
 const zod_1 = require("zod");
 exports.registerSchema = zod_1.z.object({
-    name: zod_1.z.string().min(2).max(100),
-    email: zod_1.z.string().email(),
-    password: zod_1.z.string().min(8).max(100),
-    otp: zod_1.z.string().length(6)
+    name: zod_1.z.string().min(2, 'Enter your full name').max(100, 'Name is too long'),
+    email: zod_1.z.string().email('Enter a valid email address'),
+    password: zod_1.z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password is too long'),
+    otp: zod_1.z.string().length(6, 'OTP must be 6 digits')
 });
 exports.loginSchema = zod_1.z.object({
-    email: zod_1.z.string().email(),
-    password: zod_1.z.string().min(1)
+    email: zod_1.z.string().email('Enter a valid email address'),
+    password: zod_1.z.string().min(1, 'Password is required')
 });
 exports.forgotPasswordSchema = zod_1.z.object({
-    email: zod_1.z.string().email()
+    email: zod_1.z.string().email('Enter a valid email address')
 });
 exports.resetPasswordSchema = zod_1.z.object({
-    email: zod_1.z.string().email(),
-    otp: zod_1.z.string().length(6),
-    newPassword: zod_1.z.string().min(8).max(100)
+    email: zod_1.z.string().email('Enter a valid email address'),
+    otp: zod_1.z.string().length(6, 'OTP must be 6 digits'),
+    newPassword: zod_1.z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password is too long')
 });
 exports.createCourseSchema = zod_1.z.object({
     title: zod_1.z.string().min(3).max(200),

@@ -20,7 +20,7 @@ const PAYLOAD_ENCRYPTION_ENABLED = import.meta.env.VITE_ENABLE_PAYLOAD_ENCRYPTIO
   ? import.meta.env.PROD
   : import.meta.env.VITE_ENABLE_PAYLOAD_ENCRYPTION === 'true'
 
-function getDeviceId() {
+export function getDeviceId() {
   const existing = localStorage.getItem(DEVICE_ID_KEY)
   if (existing) return existing
 
@@ -34,17 +34,21 @@ api.interceptors.request.use(async (config: EncryptedRequestConfig) => {
   if (token) config.headers.Authorization = `Bearer ${token}`
   config.headers['x-device-id'] = getDeviceId()
 
+  const method = config.method?.toLowerCase()
+  const isEncryptableMethod = Boolean(method && ENCRYPTABLE_METHODS.includes(method))
+  const isFormData = config.data instanceof FormData
+
   // If encryption is enabled and it's a modifying request with a JSON body
   if (
     PAYLOAD_ENCRYPTION_ENABLED &&
-    config.method && ENCRYPTABLE_METHODS.includes(config.method.toLowerCase()) &&
-    config.data && !(config.data instanceof FormData)
+    isEncryptableMethod &&
+    !isFormData
   ) {
     try {
       const rsaPublicKey = await getPublicKey()
       const session = await createEncryptionSession(rsaPublicKey)
       
-      const payloadString = JSON.stringify(config.data)
+      const payloadString = JSON.stringify(config.data ?? {})
       const encryptedData = await encryptPayload(payloadString, session.aesKey)
       
       config.data = {
@@ -75,11 +79,28 @@ function normalizeErrorMessage(error: any) {
   const message = error.response?.data?.message
   if (!error.response?.data) return
 
+  if (/failed to decrypt|invalid encrypted payload/i.test(message || '')) {
+    error.response.data.message = 'We could not read this request securely. Please refresh the page and try again.'
+    return
+  }
+
   if (status >= 500 || !message || /internal server error|^500\b/i.test(message)) {
     error.response.data.message = status >= 500
       ? 'Something went wrong on our side. Please try again in a moment.'
-      : 'We could not complete that request. Please check your input and try again.'
+      : 'Please check the details you entered and try again.'
   }
+}
+
+async function decryptEncryptedResponse(data: any, aesKey: CryptoKey) {
+  if (!data?.data || !data?.iv || !data?.tag) return data
+
+  const decryptedString = await decryptPayload(
+    data.data,
+    data.iv,
+    data.tag,
+    aesKey
+  )
+  return JSON.parse(decryptedString)
 }
 
 api.interceptors.response.use(
@@ -89,13 +110,7 @@ api.interceptors.response.use(
     // If we have an AES key attached, the response is encrypted and we must decrypt it
     if (config._aesKey && res.data && res.data.data && res.data.iv && res.data.tag) {
       try {
-        const decryptedString = await decryptPayload(
-          res.data.data,
-          res.data.iv,
-          res.data.tag,
-          config._aesKey
-        )
-        res.data = JSON.parse(decryptedString)
+        res.data = await decryptEncryptedResponse(res.data, config._aesKey)
       } catch (error) {
         console.error('Failed to decrypt response payload:', error)
       } finally {
@@ -108,6 +123,15 @@ api.interceptors.response.use(
   },
   async (error) => {
     const original = error.config as EncryptedRequestConfig
+
+    if (original?._aesKey && error.response?.data) {
+      try {
+        error.response.data = await decryptEncryptedResponse(error.response.data, original._aesKey)
+      } catch (decryptError) {
+        console.error('Failed to decrypt error response payload:', decryptError)
+      }
+    }
+
     normalizeErrorMessage(error)
     
     // Cleanup AES key if request failed (e.g. 400 error from backend validation)
@@ -127,11 +151,7 @@ api.interceptors.response.use(
       original._retry = true
       refreshing = true
       try {
-        const { data } = await axios.post(
-          `${import.meta.env.VITE_API_URL || '/api'}/auth/refresh`,
-          {},
-          { withCredentials: true, headers: { 'x-device-id': getDeviceId() } }
-        )
+        const { data } = await api.post('/auth/refresh', {})
         const token = data.data.accessToken
         useAuthStore.getState().setToken(token)
         queue.forEach((cb) => cb(token))

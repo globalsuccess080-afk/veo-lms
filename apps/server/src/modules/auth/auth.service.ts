@@ -53,7 +53,9 @@ export async function sendOtp(name: string, email: string) {
 
 export async function register(name: string, email: string, password: string, otp: string) {
   const storedOtp = await redis.get(`otp:${email}`)
-  if (!storedOtp || storedOtp !== otp) throw new ApiError(400, 'Invalid or expired OTP')
+  if (!storedOtp || storedOtp !== otp) {
+    throw new ApiError(400, 'The OTP is incorrect or has expired. Please check the code or request a new OTP.')
+  }
 
   const existing = await User.findOne({ emailHash: hashEmail(email) })
   if (existing) throw new ApiError(409, 'Email already registered')
@@ -113,14 +115,14 @@ export async function login(email: string, password: string, requiredRole?: 'adm
 
   if (!user || !user.isActive) {
     await handleFailedLogin(email)
-    throw new ApiError(401, 'Invalid credentials')
+    throw new ApiError(401, 'The email or password you entered is incorrect.')
   }
 
   const valid = await bcrypt.compare(password, user.password)
   if (!valid) {
     await handleFailedLogin(email)
     await handleFailedLogin(user._id.toString())
-    throw new ApiError(401, 'Invalid credentials')
+    throw new ApiError(401, 'The email or password you entered is incorrect.')
   }
 
   if (requiredRole && user.role !== requiredRole) {
@@ -196,7 +198,9 @@ export async function forgotPassword(email: string) {
 
 export async function resetPassword(email: string, otp: string, newPassword: string) {
   const storedOtp = await redis.get(`reset_otp:${email}`)
-  if (!storedOtp || storedOtp !== otp) throw new ApiError(400, 'Invalid or expired OTP')
+  if (!storedOtp || storedOtp !== otp) {
+    throw new ApiError(400, 'The OTP is incorrect or has expired. Please check the code or request a new OTP.')
+  }
 
   const user = await User.findOne({ emailHash: hashEmail(email) })
   if (!user) throw new ApiError(404, 'User not found')

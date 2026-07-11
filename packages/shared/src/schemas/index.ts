@@ -1,25 +1,25 @@
 import { z } from 'zod'
 
 export const registerSchema = z.object({
-  name: z.string().min(2).max(100),
-  email: z.string().email(),
-  password: z.string().min(8).max(100),
-  otp: z.string().length(6)
+  name: z.string().min(2, 'Enter your full name').max(100, 'Name is too long'),
+  email: z.string().email('Enter a valid email address'),
+  password: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password is too long'),
+  otp: z.string().length(6, 'OTP must be 6 digits')
 })
 
 export const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1)
+  email: z.string().email('Enter a valid email address'),
+  password: z.string().min(1, 'Password is required')
 })
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().email()
+  email: z.string().email('Enter a valid email address')
 })
 
 export const resetPasswordSchema = z.object({
-  email: z.string().email(),
-  otp: z.string().length(6),
-  newPassword: z.string().min(8).max(100)
+  email: z.string().email('Enter a valid email address'),
+  otp: z.string().length(6, 'OTP must be 6 digits'),
+  newPassword: z.string().min(8, 'Password must be at least 8 characters').max(100, 'Password is too long')
 })
 
 export const createCourseSchema = z.object({

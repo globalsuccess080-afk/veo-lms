@@ -13,6 +13,7 @@ const lesson_model_1 = require("../lesson/lesson.model");
 const apiError_1 = require("../../utils/apiError");
 const env_1 = require("../../config/env");
 const certificate_generator_1 = require("./certificate.generator");
+const logger_1 = require("../../utils/logger");
 function generateCertificateId() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     let result = '';
@@ -95,7 +96,12 @@ exports.requestPdfGeneration = (0, asyncHandler_1.asyncHandler)(async (req, res)
             publicUrl
         });
     }
-    catch {
+    catch (err) {
+        logger_1.logger.error('Certificate PDF generation failed', {
+            certificateId: cert.certificateId,
+            error: err instanceof Error ? err.message : err,
+            stack: err instanceof Error ? err.stack : undefined,
+        });
         throw new apiError_1.ApiError(500, 'We could not create the PDF right now. Please try again in a moment.');
     }
     const base64Data = Buffer.from(pdfBytes).toString('base64');
@@ -114,6 +120,7 @@ exports.getPublicCertificate = [
             studentName: cert.userId.name,
             courseName: cert.courseId.title,
             issuedAt: cert.issuedAt,
+            status: cert.status,
         });
     }),
 ];

@@ -89,8 +89,9 @@ async function sendOtp(name, email) {
 }
 async function register(name, email, password, otp) {
     const storedOtp = await redis_1.redis.get(`otp:${email}`);
-    if (!storedOtp || storedOtp !== otp)
-        throw new apiError_1.ApiError(400, 'Invalid or expired OTP');
+    if (!storedOtp || storedOtp !== otp) {
+        throw new apiError_1.ApiError(400, 'The OTP is incorrect or has expired. Please check the code or request a new OTP.');
+    }
     const existing = await user_model_1.User.findOne({ emailHash: (0, encryption_1.hashEmail)(email) });
     if (existing)
         throw new apiError_1.ApiError(409, 'Email already registered');
@@ -139,13 +140,13 @@ async function login(email, password, requiredRole) {
     }
     if (!user || !user.isActive) {
         await handleFailedLogin(email);
-        throw new apiError_1.ApiError(401, 'Invalid credentials');
+        throw new apiError_1.ApiError(401, 'The email or password you entered is incorrect.');
     }
     const valid = await bcryptjs_1.default.compare(password, user.password);
     if (!valid) {
         await handleFailedLogin(email);
         await handleFailedLogin(user._id.toString());
-        throw new apiError_1.ApiError(401, 'Invalid credentials');
+        throw new apiError_1.ApiError(401, 'The email or password you entered is incorrect.');
     }
     if (requiredRole && user.role !== requiredRole) {
         throw new apiError_1.ApiError(403, 'You do not have access to this portal');
@@ -206,8 +207,9 @@ async function forgotPassword(email) {
 }
 async function resetPassword(email, otp, newPassword) {
     const storedOtp = await redis_1.redis.get(`reset_otp:${email}`);
-    if (!storedOtp || storedOtp !== otp)
-        throw new apiError_1.ApiError(400, 'Invalid or expired OTP');
+    if (!storedOtp || storedOtp !== otp) {
+        throw new apiError_1.ApiError(400, 'The OTP is incorrect or has expired. Please check the code or request a new OTP.');
+    }
     const user = await user_model_1.User.findOne({ emailHash: (0, encryption_1.hashEmail)(email) });
     if (!user)
         throw new apiError_1.ApiError(404, 'User not found');

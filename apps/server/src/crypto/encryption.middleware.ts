@@ -16,7 +16,13 @@ export function globalEncryptionMiddleware(req: Request, res: Response, next: Ne
     return next()
   }
 
-  const { encryptedKey, data, iv, tag } = req.body
+  const { encryptedKey, data, iv, tag } = req.body || {}
+  const hasEncryptedPayload = Boolean(encryptedKey || data || iv || tag)
+  const hasPlainPayload = Boolean(req.body && Object.keys(req.body).length > 0)
+
+  if (!hasEncryptedPayload && !hasPlainPayload) {
+    return next()
+  }
 
   if (!encryptedKey || !data || !iv || !tag) {
     return next(new ApiError(400, 'Invalid encrypted payload format'))

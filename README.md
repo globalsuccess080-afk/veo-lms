@@ -39,7 +39,7 @@
 - [Tech Stack](#-tech-stack)
 - [High-Level Architecture](#-high-level-architecture) *(⭐ Must See)*
 - [Request Lifecycle](#-request-lifecycle)
-- [Video Pipeline](#-video-pipeline) 
+- [Video Pipeline](#-video-pipeline)
 - [Authentication Flow](#-authentication-flow)
 - [Payment Flow](#-payment-flow)
 - [Folder Structure](#-folder-structure) *(⭐ Must See)*
@@ -1017,9 +1017,6 @@ Auth tokens live in memory (Zustand), not localStorage. This prevents XSS from r
 
 ---
 
-
-
----
 <div align="center">
 
 ## Final Summary

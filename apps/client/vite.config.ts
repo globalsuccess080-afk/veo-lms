@@ -3,13 +3,16 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+import { PWA_UPDATE_MODE } from './src/config/pwaUpdateMode'
+
+const isAutoPWAUpdate = PWA_UPDATE_MODE === 'auto'
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'prompt',
+      registerType: isAutoPWAUpdate ? 'autoUpdate' : 'prompt',
       manifestFilename: 'site.webmanifest',
       includeAssets: [
         'favicon.ico',
@@ -25,8 +28,8 @@ export default defineConfig({
       },
       workbox: {
         cleanupOutdatedCaches: true,
-        clientsClaim: false,
-        skipWaiting: false,
+        clientsClaim: isAutoPWAUpdate,
+        skipWaiting: isAutoPWAUpdate,
         sourcemap: false,
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api\//, /\/admin(?:\/|$)/, /\/checkout(?:\/|$)/],

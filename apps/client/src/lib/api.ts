@@ -74,6 +74,15 @@ function isAuthEndpoint(url?: string) {
   return Boolean(url && /\/auth\/(login|admin\/login|register|send-otp|forgot-password|reset-password|refresh|logout)(\?|$)/.test(url))
 }
 
+function isProtectedPage(path = window.location.pathname) {
+  return ['/dashboard', '/my-courses', '/profile', '/admin'].some((prefix) => path.startsWith(prefix))
+}
+
+function requestHasAuthHeader(config?: EncryptedRequestConfig) {
+  const authHeader = config?.headers?.Authorization || config?.headers?.authorization
+  return Boolean(authHeader)
+}
+
 function normalizeErrorMessage(error: any) {
   const status = error.response?.status
   const message = error.response?.data?.message
@@ -139,7 +148,9 @@ api.interceptors.response.use(
        delete original._aesKey
     }
 
-    if (error.response?.status === 401 && original && !original._retry && !isAuthEndpoint(original.url)) {
+    const shouldRecoverAuth = Boolean(useAuthStore.getState().accessToken || requestHasAuthHeader(original) || isProtectedPage())
+
+    if (error.response?.status === 401 && original && !original._retry && !isAuthEndpoint(original.url) && shouldRecoverAuth) {
       if (refreshing) {
         return new Promise((resolve) => {
           queue.push((token) => {
@@ -160,7 +171,7 @@ api.interceptors.response.use(
         return api(original)
       } catch {
         useAuthStore.getState().logout()
-        if (!window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/admin/login')) {
+        if (isProtectedPage() && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/admin/login')) {
           const currentPath = encodeURIComponent(window.location.pathname + window.location.search)
           window.location.href = `/login?redirect=${currentPath}`
         }

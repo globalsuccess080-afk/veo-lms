@@ -51,8 +51,8 @@ export function AppBootstrap({ children }: { children: React.ReactNode }) {
         }
         setAuth(user, accessToken)
       })
-      .catch(() => {
-        clearRefreshHint()
+      .catch((error) => {
+        if (error?.response?.status === 401) clearRefreshHint()
         if (active) finishAuthCheck()
       })
       .finally(() => {

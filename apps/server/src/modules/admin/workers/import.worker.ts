@@ -6,7 +6,7 @@ import { User } from '../../user/user.model'
 import * as xlsx from 'xlsx'
 import fs from 'fs/promises'
 import crypto from 'crypto'
-import bcrypt from 'bcryptjs'
+import { hashPassword } from '../../../utils/password'
 
 export const adminImportWorker = new Worker(
   'adminImport',
@@ -75,7 +75,7 @@ export const adminImportWorker = new Worker(
           rowsWithHash
             .filter(row => !existingHashes.has(row.hash))
             .map(async (row) => {
-              const password = await bcrypt.hash(row.password || 'TempPassword123!', 10)
+              const password = await hashPassword(row.password || 'TempPassword123!')
               return {
                 name: row.name,
                 email: row.email,

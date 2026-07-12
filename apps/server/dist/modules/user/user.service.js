@@ -1,15 +1,12 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateProfile = updateProfile;
 exports.changePassword = changePassword;
-const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const user_model_1 = require("./user.model");
 const apiError_1 = require("../../utils/apiError");
 const StorageService_1 = require("../../storage/StorageService");
 const assetPath_1 = require("../../utils/assetPath");
+const password_1 = require("../../utils/password");
 async function updateProfile(userId, name, avatar) {
     const user = await user_model_1.User.findById(userId);
     if (!user)
@@ -37,9 +34,9 @@ async function changePassword(userId, currentPassword, newPassword) {
     const user = await user_model_1.User.findById(userId);
     if (!user)
         throw new apiError_1.ApiError(404, 'User not found');
-    const valid = await bcryptjs_1.default.compare(currentPassword, user.password);
+    const valid = await (0, password_1.verifyPassword)(currentPassword, user.password);
     if (!valid)
         throw new apiError_1.ApiError(400, 'Current password is incorrect');
-    user.password = await bcryptjs_1.default.hash(newPassword, 12);
+    user.password = await (0, password_1.hashPassword)(newPassword);
     await user.save();
 }

@@ -45,10 +45,21 @@ const cookieOptions = {
     httpOnly: true,
     secure: env_1.env.NODE_ENV === 'production',
     sameSite: (env_1.env.NODE_ENV === 'production' ? 'none' : 'lax'),
+    path: '/',
     maxAge: 7 * 24 * 60 * 60 * 1000
+};
+const clearCookieOptions = {
+    secure: cookieOptions.secure,
+    sameSite: cookieOptions.sameSite,
+    path: cookieOptions.path
 };
 function setRefreshCookie(res, token) {
     res.cookie('refreshToken', token, cookieOptions);
+    res.cookie('hasRefreshToken', '1', { ...cookieOptions, httpOnly: false });
+}
+function clearRefreshCookies(res) {
+    res.clearCookie('refreshToken', { ...clearCookieOptions, httpOnly: true });
+    res.clearCookie('hasRefreshToken', { ...clearCookieOptions, httpOnly: false });
 }
 exports.sendOtp = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { name, email } = req.body;
@@ -98,7 +109,7 @@ exports.logout = [
     auth_middleware_1.authenticate,
     (0, asyncHandler_1.asyncHandler)(async (req, res) => {
         await authService.logout(req.user.id);
-        res.clearCookie('refreshToken');
+        clearRefreshCookies(res);
         (0, apiResponse_1.sendSuccess)(res, null, 'Logged out');
     })
 ];

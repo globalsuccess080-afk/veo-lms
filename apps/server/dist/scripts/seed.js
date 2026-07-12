@@ -3,7 +3,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-const bcryptjs_1 = __importDefault(require("bcryptjs"));
 const mongoose_1 = __importDefault(require("mongoose"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const path_1 = __importDefault(require("path"));
@@ -11,6 +10,7 @@ const user_model_1 = require("../modules/user/user.model");
 const course_model_1 = require("../modules/course/course.model");
 const lesson_model_1 = require("../modules/lesson/lesson.model");
 const mongoose_2 = require("mongoose");
+const password_1 = require("../utils/password");
 dotenv_1.default.config({ path: path_1.default.resolve(__dirname, '../../../../.env') });
 const courses = [
     {
@@ -159,8 +159,8 @@ async function seed() {
     await user_model_1.User.deleteMany({});
     await course_model_1.Course.deleteMany({});
     await lesson_model_1.Lesson.deleteMany({});
-    const adminPass = await bcryptjs_1.default.hash(process.env.ADMIN_PASSWORD || 'Admin@123456', 12);
-    const studentPass = await bcryptjs_1.default.hash('Student@123456', 12);
+    const adminPass = await (0, password_1.hashPassword)(process.env.ADMIN_PASSWORD || 'Admin@123456');
+    const studentPass = await (0, password_1.hashPassword)('Student@123456');
     await user_model_1.User.create({
         name: 'Admin',
         email: process.env.ADMIN_EMAIL || 'admin@veolms.com',

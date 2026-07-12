@@ -1,16 +1,16 @@
 import { useQuery } from '@tanstack/react-query'
 import { motion, type Variants } from 'framer-motion'
 import { Flame, Calendar, Trophy, Activity, Check, X } from 'lucide-react'
-import { getMyStreak, getStreakHistory } from '../../services/streak.service'
+import { getMyStreak, getStreakHistory, type StreakDay, type StreakStats } from '../../services/streak.service'
 
 const ITEM_VAR: Variants = {
   hidden: { opacity: 0, y: 20 },
   show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
 }
 
-export function LearningStreakCard() {
-  const { data: stats } = useQuery({ queryKey: ['my-streak'], queryFn: getMyStreak })
-  const { data: history } = useQuery({ queryKey: ['streak-history'], queryFn: getStreakHistory })
+export function LearningStreakCard({ stats: initialStats, history: initialHistory }: { stats?: StreakStats | null; history?: StreakDay[] }) {
+  const { data: stats } = useQuery({ queryKey: ['my-streak'], queryFn: getMyStreak, initialData: initialStats || undefined })
+  const { data: history } = useQuery({ queryKey: ['streak-history'], queryFn: getStreakHistory, initialData: initialHistory })
 
   if (!stats || !history) return null
 

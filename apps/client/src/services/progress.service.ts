@@ -21,6 +21,11 @@ export async function getRecentProgress() {
   return data.data
 }
 
+export async function getStudentDashboard() {
+  const { data } = await api.get('/progress/dashboard')
+  return data.data
+}
+
 export async function getLessonProgress(lessonId: string) {
   const { data } = await api.get(`/progress/lesson/${lessonId}`)
   return data.data

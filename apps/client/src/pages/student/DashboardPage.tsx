@@ -2,9 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { motion, type Variants } from 'framer-motion'
 import { BookOpen, CheckCircle2, TrendingUp, Clock, ArrowRight, PlayCircle, Sparkles, Award, ExternalLink } from 'lucide-react'
-import { getMyEnrollments } from '../../services/enrollment.service'
-import { getRecentProgress } from '../../services/progress.service'
-import { getMyCertificates, type Certificate } from '../../services/certificate.service'
+import { getStudentDashboard } from '../../services/progress.service'
+import { type Certificate } from '../../services/certificate.service'
+import { type StreakDay, type StreakStats } from '../../services/streak.service'
 import { useAuthStore } from '../../store/authStore'
 import { PageWrapper } from '../../components/layout/PageWrapper'
 import { Progress } from '../../components/ui/Progress'
@@ -25,6 +25,13 @@ interface RecentItem {
   watchedSeconds: number
   totalSeconds: number
   isCompleted: boolean
+}
+interface StudentDashboardData {
+  enrollments: EnrollmentItem[]
+  recent: RecentItem[]
+  certificates: Certificate[]
+  streak: StreakStats | null
+  streakHistory: StreakDay[]
 }
 
 const FADE_DOWN: Variants = {
@@ -48,17 +55,19 @@ function formatCertificateDate(value: string) {
 
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user)
-  const { data: rawEnrollments, isLoading: enrollmentsLoading } = useQuery<EnrollmentItem[]>({ queryKey: ['my-enrollments'], queryFn: getMyEnrollments })
-  const { data: rawRecent, isLoading: recentLoading } = useQuery<RecentItem[]>({ queryKey: ['recent-progress'], queryFn: getRecentProgress })
-  const { data: rawCertificates } = useQuery<Certificate[]>({ queryKey: ['my-certificates'], queryFn: getMyCertificates })
+  const { data: dashboard, isLoading } = useQuery<StudentDashboardData>({
+    queryKey: ['student-dashboard', user?.id],
+    queryFn: getStudentDashboard,
+    enabled: Boolean(user?.id)
+  })
 
-  if (enrollmentsLoading || recentLoading) {
+  if (isLoading) {
     return <StudentDashboardSkeleton />
   }
 
-  const enrollments = rawEnrollments?.filter(e => e?.course) || []
-  const recent = rawRecent?.filter(r => r?.courseId) || []
-  const latestCertificates = (rawCertificates || []).filter((c) => c?.courseId).slice(0, 3)
+  const enrollments = dashboard?.enrollments?.filter(e => e?.course) || []
+  const recent = dashboard?.recent?.filter(r => r?.courseId) || []
+  const latestCertificates = (dashboard?.certificates || []).slice(0, 3)
 
   const completed = recent.filter((r) => r.isCompleted).length
   const total = enrollments.length
@@ -102,7 +111,7 @@ export function DashboardPage() {
         </motion.div>
 
         {/* Learning Streak Section */}
-        <LearningStreakCard />
+        <LearningStreakCard stats={dashboard?.streak} history={dashboard?.streakHistory} />
 
         {/* Stats Grid */}
         <motion.div variants={STAGGER_CONTAINER} className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-16">
@@ -165,7 +174,7 @@ export function DashboardPage() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-[10px] font-black uppercase tracking-[0.18em] text-primary mb-1">Verified</p>
-                        <h3 className="font-extrabold text-[15px] leading-snug line-clamp-2 text-fg">{cert.courseId.title}</h3>
+                        <h3 className="font-extrabold text-[15px] leading-snug line-clamp-2 text-fg">{cert.courseId?.title || 'Course Certificate'}</h3>
                       </div>
                     </div>
                     <div className="rounded-xl bg-canvas/70 border border-line/70 p-3 mb-4">

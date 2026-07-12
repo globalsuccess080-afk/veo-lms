@@ -45,7 +45,7 @@ const user_model_1 = require("../../user/user.model");
 const xlsx = __importStar(require("xlsx"));
 const promises_1 = __importDefault(require("fs/promises"));
 const crypto_1 = __importDefault(require("crypto"));
-const bcryptjs_1 = __importDefault(require("bcryptjs"));
+const password_1 = require("../../../utils/password");
 exports.adminImportWorker = new bullmq_1.Worker('adminImport', async (job) => {
     logger_1.logger.info(`Processing admin import job ${job.id} for type: ${job.data.type}`);
     const { type, filePath } = job.data;
@@ -100,7 +100,7 @@ exports.adminImportWorker = new bullmq_1.Worker('adminImport', async (job) => {
             const usersToInsert = await Promise.all(rowsWithHash
                 .filter(row => !existingHashes.has(row.hash))
                 .map(async (row) => {
-                const password = await bcryptjs_1.default.hash(row.password || 'TempPassword123!', 10);
+                const password = await (0, password_1.hashPassword)(row.password || 'TempPassword123!');
                 return {
                     name: row.name,
                     email: row.email,

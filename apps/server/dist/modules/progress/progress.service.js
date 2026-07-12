@@ -3,12 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateProgress = updateProgress;
 exports.getCourseProgress = getCourseProgress;
 exports.getRecent = getRecent;
+exports.getStudentDashboard = getStudentDashboard;
 exports.getLessonProgress = getLessonProgress;
 const progress_model_1 = require("./progress.model");
 const lesson_model_1 = require("../lesson/lesson.model");
 const enrollment_model_1 = require("../enrollment/enrollment.model");
 const streak_service_1 = require("../streak/streak.service");
 const assetPath_1 = require("../../utils/assetPath");
+const enrollment_service_1 = require("../enrollment/enrollment.service");
+const certificate_model_1 = require("../certificate/certificate.model");
 async function updateProgress(userId, courseId, lessonId, watchedSeconds, totalSeconds, isCompleted) {
     const existing = await progress_model_1.Progress.findOne({ userId, courseId, lessonId });
     const alreadyCompleted = existing?.isCompleted === true;
@@ -67,6 +70,37 @@ async function getRecent(userId) {
             lastWatchedAt: p.lastWatchedAt.toISOString()
         };
     });
+}
+async function getStudentDashboard(userId) {
+    const [enrollments, recent, certificates, streak, streakHistory] = await Promise.all([
+        (0, enrollment_service_1.getMyEnrollments)(userId),
+        getRecent(userId),
+        certificate_model_1.Certificate.find({ userId })
+            .populate('courseId', 'title slug thumbnail instructor totalLessons')
+            .sort({ issuedAt: -1, createdAt: -1 })
+            .limit(3)
+            .lean(),
+        (0, streak_service_1.getCurrentStreak)(userId),
+        (0, streak_service_1.getStreakHistory)(userId)
+    ]);
+    return {
+        enrollments,
+        recent,
+        certificates: certificates.map((cert) => {
+            const course = cert.courseId;
+            return {
+                ...cert,
+                courseId: course && typeof course === 'object'
+                    ? {
+                        ...course,
+                        thumbnail: course.thumbnail ? (0, assetPath_1.formatAssetPath)(course.thumbnail) : course.thumbnail,
+                    }
+                    : course,
+            };
+        }),
+        streak,
+        streakHistory
+    };
 }
 async function getLessonProgress(userId, lessonId) {
     const progress = await progress_model_1.Progress.findOne({ userId, lessonId }).lean();

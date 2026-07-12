@@ -9,7 +9,7 @@ const rate_limit_redis_1 = require("rate-limit-redis");
 const crypto_1 = __importDefault(require("crypto"));
 const redis_1 = require("../config/redis");
 const getStoreConfig = (prefix) => {
-    if (process.env.NODE_ENV === 'test') {
+    if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
         return {};
     }
     return {

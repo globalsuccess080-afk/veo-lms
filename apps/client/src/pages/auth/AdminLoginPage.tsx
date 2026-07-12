@@ -12,6 +12,7 @@ import { useAuthStore } from '../../store/authStore'
 import { AuthShell } from '../../components/auth/AuthShell'
 import { Button } from '../../components/ui/Button'
 import { Input, Field } from '../../components/ui/Input'
+import { queryClient } from '../../lib/queryClient'
 
 type FormData = z.infer<typeof loginSchema>
 
@@ -31,6 +32,7 @@ export function AdminLoginPage() {
     try {
       const result = await adminLogin(data.email, data.password)
       setAuth(result.user, result.accessToken)
+      queryClient.removeQueries()
       toast.success('Welcome back, admin')
       navigate('/admin')
     } catch (err) {

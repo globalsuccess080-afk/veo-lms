@@ -72,7 +72,7 @@ export async function getMyEnrollments(userId: string) {
   })
 
   if (enrollmentProgressUpdates.length > 0) {
-    await Enrollment.bulkWrite(enrollmentProgressUpdates)
+    void Enrollment.bulkWrite(enrollmentProgressUpdates).catch(() => undefined)
   }
 
   return data

@@ -1,9 +1,10 @@
 import { Progress } from './progress.model'
 import { Lesson } from '../lesson/lesson.model'
 import { Enrollment } from '../enrollment/enrollment.model'
-import { Course } from '../course/course.model'
-import { updateLearningStreak } from '../streak/streak.service'
+import { updateLearningStreak, getCurrentStreak, getStreakHistory } from '../streak/streak.service'
 import { formatAssetPath } from '../../utils/assetPath'
+import { getMyEnrollments } from '../enrollment/enrollment.service'
+import { Certificate } from '../certificate/certificate.model'
 
 export async function updateProgress(
   userId: string,
@@ -83,6 +84,39 @@ export async function getRecent(userId: string) {
       lastWatchedAt: p.lastWatchedAt.toISOString()
     }
   })
+}
+
+export async function getStudentDashboard(userId: string) {
+  const [enrollments, recent, certificates, streak, streakHistory] = await Promise.all([
+    getMyEnrollments(userId),
+    getRecent(userId),
+    Certificate.find({ userId })
+      .populate('courseId', 'title slug thumbnail instructor totalLessons')
+      .sort({ issuedAt: -1, createdAt: -1 })
+      .limit(3)
+      .lean(),
+    getCurrentStreak(userId),
+    getStreakHistory(userId)
+  ])
+
+  return {
+    enrollments,
+    recent,
+    certificates: certificates.map((cert) => {
+      const course = cert.courseId as any
+      return {
+        ...cert,
+        courseId: course && typeof course === 'object'
+          ? {
+              ...course,
+              thumbnail: course.thumbnail ? formatAssetPath(course.thumbnail) : course.thumbnail,
+            }
+          : course,
+      }
+    }),
+    streak,
+    streakHistory
+  }
 }
 
 export async function getLessonProgress(userId: string, lessonId: string) {

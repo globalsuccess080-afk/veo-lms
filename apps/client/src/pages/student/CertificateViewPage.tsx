@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button'
 import { generateCertificate, getCourseCertificate, requestPdfDownload } from '../../services/certificate.service'
 import { getCourse, getCurriculum } from '../../services/course.service'
 import { getCourseProgress } from '../../services/progress.service'
+import { queryClient } from '../../lib/queryClient'
 
 function getReadableError(err: unknown, fallback: string) {
     const error = err as { response?: { data?: { message?: string } }, message?: string }
@@ -52,6 +53,8 @@ export function CertificateViewPage() {
 
     useEffect(() => {
         if (certificate && !confettiShownRef.current) {
+            queryClient.invalidateQueries({ queryKey: ['student-dashboard'] })
+            queryClient.invalidateQueries({ queryKey: ['my-certificates'] })
             confettiShownRef.current = true
             if (cardRef.current) {
                 const { width, height } = cardRef.current.getBoundingClientRect()
@@ -82,7 +85,13 @@ export function CertificateViewPage() {
 
     const { mutate: handleGenerate, isPending: isGenerating } = useMutation({
         mutationFn: () => generateCertificate(course!.id),
-        onSuccess: () => { setIsPolling(true); setPollCount(0) },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['student-dashboard'] })
+            queryClient.invalidateQueries({ queryKey: ['my-certificates'] })
+            setIsPolling(true)
+            setPollCount(0)
+            void refetchCert()
+        },
         onError: (err: unknown) => toast.error(getReadableError(err, 'We could not generate your certificate. Please try again.')),
     })
 

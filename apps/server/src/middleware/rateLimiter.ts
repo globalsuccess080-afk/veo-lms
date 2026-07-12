@@ -5,7 +5,7 @@ import crypto from 'crypto'
 import { redis } from '../config/redis'
 
 const getStoreConfig = (prefix: string) => {
-  if (process.env.NODE_ENV === 'test') {
+  if (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'development') {
     return {}
   }
   return {

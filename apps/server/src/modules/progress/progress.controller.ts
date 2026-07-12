@@ -35,6 +35,14 @@ export const recent = [
   })
 ]
 
+export const studentDashboard = [
+  authenticate,
+  asyncHandler(async (req: AuthRequest, res) => {
+    const data = await progressService.getStudentDashboard(req.user!.id)
+    sendSuccess(res, data)
+  })
+]
+
 export const byLesson = [
   authenticate,
   asyncHandler(async (req: AuthRequest, res) => {

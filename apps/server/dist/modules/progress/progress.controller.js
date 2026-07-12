@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.byLesson = exports.recent = exports.byCourse = exports.update = void 0;
+exports.byLesson = exports.studentDashboard = exports.recent = exports.byCourse = exports.update = void 0;
 const shared_1 = require("@veolms/shared");
 const progressService = __importStar(require("./progress.service"));
 const asyncHandler_1 = require("../../utils/asyncHandler");
@@ -61,6 +61,13 @@ exports.recent = [
     auth_middleware_1.authenticate,
     (0, asyncHandler_1.asyncHandler)(async (req, res) => {
         const data = await progressService.getRecent(req.user.id);
+        (0, apiResponse_1.sendSuccess)(res, data);
+    })
+];
+exports.studentDashboard = [
+    auth_middleware_1.authenticate,
+    (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+        const data = await progressService.getStudentDashboard(req.user.id);
         (0, apiResponse_1.sendSuccess)(res, data);
     })
 ];

@@ -102,7 +102,7 @@ async function getMyEnrollments(userId) {
         };
     });
     if (enrollmentProgressUpdates.length > 0) {
-        await enrollment_model_1.Enrollment.bulkWrite(enrollmentProgressUpdates);
+        void enrollment_model_1.Enrollment.bulkWrite(enrollmentProgressUpdates).catch(() => undefined);
     }
     return data;
 }

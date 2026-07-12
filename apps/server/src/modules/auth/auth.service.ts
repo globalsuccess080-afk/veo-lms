@@ -1,4 +1,3 @@
-import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { hashEmail } from '../../utils/encryption'
 import { User } from '../user/user.model'
@@ -8,6 +7,28 @@ import { redis } from '../../config/redis'
 import { User as UserType } from '@veolms/shared'
 import { formatAssetPath } from '../../utils/assetPath'
 import { logger } from '../../utils/logger'
+import { hashPassword, passwordNeedsRehash, verifyPassword } from '../../utils/password'
+
+let emailDepsPromise: Promise<{
+  emailQueue: typeof import('../email/email.queue').emailQueue
+  generateOtpEmail: typeof import('../email/templates').generateOtpEmail
+  generateWelcomeEmail: typeof import('../email/templates').generateWelcomeEmail
+  generatePasswordResetEmail: typeof import('../email/templates').generatePasswordResetEmail
+}> | null = null
+
+function getEmailDeps() {
+  emailDepsPromise ||= Promise.all([
+    import('../email/email.queue'),
+    import('../email/templates')
+  ]).then(([queueModule, templateModule]) => ({
+    emailQueue: queueModule.emailQueue,
+    generateOtpEmail: templateModule.generateOtpEmail,
+    generateWelcomeEmail: templateModule.generateWelcomeEmail,
+    generatePasswordResetEmail: templateModule.generatePasswordResetEmail
+  }))
+
+  return emailDepsPromise
+}
 
 function formatUser(user: InstanceType<typeof User>): UserType {
   return {
@@ -22,53 +43,52 @@ function formatUser(user: InstanceType<typeof User>): UserType {
 }
 
 export async function sendOtp(name: string, email: string) {
-  logger.info('OTP requested', { email, name })
+  const normalizedEmail = email.trim().toLowerCase()
+  logger.info('OTP requested', { email: normalizedEmail, name })
 
-  const existing = await User.findOne({ emailHash: hashEmail(email) })
+  const depsPromise = getEmailDeps()
+  const existing = await User.exists({ emailHash: hashEmail(normalizedEmail) })
   if (existing) throw new ApiError(409, 'Email already registered')
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString()
-  await redis.set(`otp:${email}`, otp, 'EX', 10 * 60)
-  logger.info('OTP stored in redis', { email, key: `otp:${email}`, expiresInSeconds: 600 })
+  await redis.set(`otp:${normalizedEmail}`, otp, 'EX', 10 * 60)
+  logger.info('OTP stored in redis', { email: normalizedEmail, key: `otp:${normalizedEmail}`, expiresInSeconds: 600 })
 
-  const { emailQueue } = await import('../email/email.queue')
-  const { generateOtpEmail } = await import('../email/templates')
+  const { emailQueue, generateOtpEmail } = await depsPromise
   
   const job = await emailQueue.add('sendEmail', {
-    to: email,
+    to: normalizedEmail,
     subject: 'Verify your VeoLMS Account',
     html: generateOtpEmail(name, otp)
   })
-  const emailQueueCounts = await emailQueue.getJobCounts('waiting', 'active', 'completed', 'failed', 'delayed')
 
   logger.info('OTP email job queued', {
-    email,
+    email: normalizedEmail,
     jobId: job.id,
     queueName: job.queueName,
-    queueCounts: emailQueueCounts,
   })
 
   return { message: 'OTP sent to email' }
 }
 
 export async function register(name: string, email: string, password: string, otp: string) {
-  const storedOtp = await redis.get(`otp:${email}`)
+  const normalizedEmail = email.trim().toLowerCase()
+  const storedOtp = await redis.get(`otp:${normalizedEmail}`)
   if (!storedOtp || storedOtp !== otp) {
     throw new ApiError(400, 'The OTP is incorrect or has expired. Please check the code or request a new OTP.')
   }
 
-  const existing = await User.findOne({ emailHash: hashEmail(email) })
+  const existing = await User.exists({ emailHash: hashEmail(normalizedEmail) })
   if (existing) throw new ApiError(409, 'Email already registered')
 
-  const hashed = await bcrypt.hash(password, 12)
-  const user = await User.create({ name, email, password: hashed, role: 'student' })
+  const hashed = await hashPassword(password)
+  const user = await User.create({ name, email: normalizedEmail, password: hashed, role: 'student' })
 
-  await redis.del(`otp:${email}`)
+  await redis.del(`otp:${normalizedEmail}`)
 
-  const { emailQueue } = await import('../email/email.queue')
-  const { generateWelcomeEmail } = await import('../email/templates')
+  const { emailQueue, generateWelcomeEmail } = await getEmailDeps()
   await emailQueue.add('sendEmail', {
-    to: email,
+    to: normalizedEmail,
     subject: 'Welcome to VeoLMS',
     html: generateWelcomeEmail(name)
   })
@@ -95,17 +115,17 @@ async function handleFailedLogin(identifier: string) {
 }
 
 export async function login(email: string, password: string, requiredRole?: 'admin' | 'student') {
-  let lockKey = `login_lock:${email}`
-  let ttl = await redis.ttl(lockKey)
+  const normalizedEmail = email.trim().toLowerCase()
+  const emailHash = hashEmail(normalizedEmail)
+  const [emailLockTtl, user] = await Promise.all([
+    redis.ttl(`login_lock:${normalizedEmail}`),
+    User.findOne({ emailHash })
+  ])
 
-  const user = await User.findOne({ emailHash: hashEmail(email) })
-
+  let ttl = emailLockTtl
   if (user) {
-    const userLockKey = `login_lock:${user._id}`
-    const userTtl = await redis.ttl(userLockKey)
-    if (userTtl > ttl) {
-      ttl = userTtl
-    }
+    const userTtl = await redis.ttl(`login_lock:${user._id}`)
+    ttl = Math.max(ttl, userTtl)
   }
 
   if (ttl > 0) {
@@ -114,14 +134,16 @@ export async function login(email: string, password: string, requiredRole?: 'adm
   }
 
   if (!user || !user.isActive) {
-    await handleFailedLogin(email)
+    await handleFailedLogin(normalizedEmail)
     throw new ApiError(401, 'The email or password you entered is incorrect.')
   }
 
-  const valid = await bcrypt.compare(password, user.password)
+  const valid = await verifyPassword(password, user.password)
   if (!valid) {
-    await handleFailedLogin(email)
-    await handleFailedLogin(user._id.toString())
+    await Promise.all([
+      handleFailedLogin(normalizedEmail),
+      handleFailedLogin(user._id.toString())
+    ])
     throw new ApiError(401, 'The email or password you entered is incorrect.')
   }
 
@@ -129,17 +151,22 @@ export async function login(email: string, password: string, requiredRole?: 'adm
     throw new ApiError(403, 'You do not have access to this portal')
   }
 
-  // Clear failed attempts on successful login
-  await redis.del(`login_attempts:${email}`)
-  await redis.del(`login_attempts:${user._id.toString()}`)
-
-  user.lastLogin = new Date()
-  await user.save()
-
   const payload = { id: user._id.toString(), role: user.role }
   const accessToken = generateAccessToken(payload)
   const refreshToken = generateRefreshToken(payload)
   await redis.set(`refresh:${user._id}`, refreshToken, 'EX', 7 * 24 * 60 * 60)
+
+  void Promise.all([
+    redis.del(`login_attempts:${normalizedEmail}`),
+    redis.del(`login_attempts:${user._id.toString()}`),
+    User.updateOne({ _id: user._id }, { $set: { lastLogin: new Date() } })
+  ]).catch(() => undefined)
+
+  if (passwordNeedsRehash(user.password)) {
+    void hashPassword(password)
+      .then((hashed) => User.updateOne({ _id: user._id }, { $set: { password: hashed } }))
+      .catch(() => undefined)
+  }
 
   return { accessToken, refreshToken, user: formatUser(user) }
 }
@@ -169,26 +196,26 @@ export async function getMe(userId: string) {
 }
 
 export async function forgotPassword(email: string) {
-  logger.info('Password reset OTP requested', { email })
+  const normalizedEmail = email.trim().toLowerCase()
+  logger.info('Password reset OTP requested', { email: normalizedEmail })
 
-  const user = await User.findOne({ emailHash: hashEmail(email) })
+  const user = await User.findOne({ emailHash: hashEmail(normalizedEmail) })
   if (!user) throw new ApiError(404, 'User not found')
 
   const otp = Math.floor(100000 + Math.random() * 900000).toString()
-  await redis.set(`reset_otp:${email}`, otp, 'EX', 10 * 60)
-  logger.info('Password reset OTP stored in redis', { email, key: `reset_otp:${email}`, expiresInSeconds: 600 })
+  await redis.set(`reset_otp:${normalizedEmail}`, otp, 'EX', 10 * 60)
+  logger.info('Password reset OTP stored in redis', { email: normalizedEmail, key: `reset_otp:${normalizedEmail}`, expiresInSeconds: 600 })
 
-  const { emailQueue } = await import('../email/email.queue')
-  const { generatePasswordResetEmail } = await import('../email/templates')
+  const { emailQueue, generatePasswordResetEmail } = await getEmailDeps()
   
   const job = await emailQueue.add('sendEmail', {
-    to: email,
+    to: normalizedEmail,
     subject: 'Reset Your VeoLMS Password',
     html: generatePasswordResetEmail(user.getDecryptedName(), otp)
   })
 
   logger.info('Password reset email job queued', {
-    email,
+    email: normalizedEmail,
     jobId: job.id,
     queueName: job.queueName,
   })
@@ -197,21 +224,22 @@ export async function forgotPassword(email: string) {
 }
 
 export async function resetPassword(email: string, otp: string, newPassword: string) {
-  const storedOtp = await redis.get(`reset_otp:${email}`)
+  const normalizedEmail = email.trim().toLowerCase()
+  const storedOtp = await redis.get(`reset_otp:${normalizedEmail}`)
   if (!storedOtp || storedOtp !== otp) {
     throw new ApiError(400, 'The OTP is incorrect or has expired. Please check the code or request a new OTP.')
   }
 
-  const user = await User.findOne({ emailHash: hashEmail(email) })
+  const user = await User.findOne({ emailHash: hashEmail(normalizedEmail) })
   if (!user) throw new ApiError(404, 'User not found')
 
-  const hashed = await bcrypt.hash(newPassword, 12)
+  const hashed = await hashPassword(newPassword)
   user.password = hashed
   await user.save()
 
-  await redis.del(`reset_otp:${email}`)
-  await redis.del(`login_attempts:${email}`)
-  await redis.del(`login_lock:${email}`)
+  await redis.del(`reset_otp:${normalizedEmail}`)
+  await redis.del(`login_attempts:${normalizedEmail}`)
+  await redis.del(`login_lock:${normalizedEmail}`)
   await redis.del(`login_attempts:${user._id.toString()}`)
   await redis.del(`login_lock:${user._id.toString()}`)
 

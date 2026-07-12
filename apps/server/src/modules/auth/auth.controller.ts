@@ -12,11 +12,23 @@ const cookieOptions = {
   httpOnly: true,
   secure: env.NODE_ENV === 'production',
   sameSite: (env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
+  path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000
+}
+const clearCookieOptions = {
+  secure: cookieOptions.secure,
+  sameSite: cookieOptions.sameSite,
+  path: cookieOptions.path
 }
 
 function setRefreshCookie(res: Response, token: string) {
   res.cookie('refreshToken', token, cookieOptions)
+  res.cookie('hasRefreshToken', '1', { ...cookieOptions, httpOnly: false })
+}
+
+function clearRefreshCookies(res: Response) {
+  res.clearCookie('refreshToken', { ...clearCookieOptions, httpOnly: true })
+  res.clearCookie('hasRefreshToken', { ...clearCookieOptions, httpOnly: false })
 }
 
 export const sendOtp = asyncHandler(async (req, res) => {
@@ -69,7 +81,7 @@ export const logout = [
   authenticate,
   asyncHandler(async (req: AuthRequest, res) => {
     await authService.logout(req.user!.id)
-    res.clearCookie('refreshToken')
+    clearRefreshCookies(res)
     sendSuccess(res, null, 'Logged out')
   })
 ]

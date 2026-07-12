@@ -1,4 +1,3 @@
-import bcrypt from 'bcryptjs'
 import mongoose from 'mongoose'
 import dotenv from 'dotenv'
 import path from 'path'
@@ -6,6 +5,7 @@ import { User } from '../modules/user/user.model'
 import { Course } from '../modules/course/course.model'
 import { Lesson } from '../modules/lesson/lesson.model'
 import { Types } from 'mongoose'
+import { hashPassword } from '../utils/password'
 
 dotenv.config({ path: path.resolve(__dirname, '../../../../.env') })
 
@@ -160,8 +160,8 @@ async function seed() {
   await Course.deleteMany({})
   await Lesson.deleteMany({})
 
-  const adminPass = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Admin@123456', 12)
-  const studentPass = await bcrypt.hash('Student@123456', 12)
+  const adminPass = await hashPassword(process.env.ADMIN_PASSWORD || 'Admin@123456')
+  const studentPass = await hashPassword('Student@123456')
 
   await User.create({
     name: 'Admin',

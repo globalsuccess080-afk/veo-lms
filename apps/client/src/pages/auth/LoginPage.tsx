@@ -5,6 +5,7 @@ import { Eye, EyeOff, ArrowRight, GraduationCap } from 'lucide-react'
 import { login } from '../../services/auth.service'
 import { useAuthStore } from '../../store/authStore'
 import { AuthShell } from '../../components/auth/AuthShell'
+import { queryClient } from '../../lib/queryClient'
 
 interface FormErrors { email?: string; password?: string }
 
@@ -65,6 +66,7 @@ export function LoginPage() {
     try {
       const result = await login(email, password)
       setAuth(result.user, result.accessToken)
+      queryClient.removeQueries()
       toast.success('Welcome back!')
       const searchParams = new URLSearchParams(location.search)
       const redirect = searchParams.get('redirect')

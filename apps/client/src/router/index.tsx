@@ -3,6 +3,7 @@ import { createBrowserRouter, Outlet, ScrollRestoration } from 'react-router-dom
 import { ProtectedRoute } from '../components/shared/ProtectedRoute'
 import { ErrorBoundary } from '../components/shared/ErrorBoundary'
 import { AdminLayout } from '../components/layout/AdminLayout'
+import { HomePage } from '../pages/public/HomePage'
 
 import { AdminDashboardSkeleton } from '../components/skeletons/admin/AdminDashboardSkeleton'
 import { ManageCoursesSkeleton } from '../components/skeletons/admin/ManageCoursesSkeleton'
@@ -20,7 +21,6 @@ import { ProfileSkeleton } from '../components/skeletons/student/ProfileSkeleton
 import { CoursePageSkeleton } from '../components/course-page/CoursePageSkeleton'
 import { PageLoader } from '../components/ui/Spinner'
 
-const HomePage = lazy(() => import('../pages/public/HomePage').then(m => ({ default: m.HomePage })))
 const CoursePage = lazy(() => import('../pages/public/CoursePage').then(m => ({ default: m.CoursePage })))
 const SearchPage = lazy(() => import('../pages/public/SearchPage').then(m => ({ default: m.SearchPage })))
 const LearningPathsPage = lazy(() => import('../pages/public/LearningPathsPage').then(m => ({ default: m.LearningPathsPage })))
@@ -66,7 +66,7 @@ export const router = createBrowserRouter([
       </>
     ),
     children: [
-      { path: '/', element: withSuspense(HomePage) },
+      { path: '/', element: <ErrorBoundary><HomePage /></ErrorBoundary> },
       { path: '/courses/:slug', element: withSuspense(CoursePage, CoursePageSkeleton) },
       { path: '/search', element: withSuspense(SearchPage) },
       { path: '/learning-paths', element: withSuspense(LearningPathsPage) },

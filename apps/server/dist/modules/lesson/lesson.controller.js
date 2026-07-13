@@ -84,9 +84,9 @@ exports.byCourse = [
     })
 ];
 exports.videoUrl = [
-    auth_middleware_1.authenticate,
+    auth_middleware_1.optionalAuth,
     (0, asyncHandler_1.asyncHandler)(async (req, res) => {
-        const url = await lessonService.getVideoUrl((0, params_1.param)(req.params.id), req.user.id, req.user.role);
+        const url = await lessonService.getVideoUrl((0, params_1.param)(req.params.id), req.user?.id, req.user?.role);
         (0, apiResponse_1.sendSuccess)(res, url);
     })
 ];

@@ -59,6 +59,7 @@ export function CoursePage() {
                 courseSlug={course.slug}
                 totalLessons={course.totalLessons}
                 isEnrolled={isEnrolled}
+                isLoggedIn={!!user}
               />
               <CourseInstructorBlock
                 name={course.instructor.name}

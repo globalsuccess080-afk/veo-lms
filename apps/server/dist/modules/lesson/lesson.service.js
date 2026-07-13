@@ -161,7 +161,7 @@ async function getVideoUrl(id, userId, userRole) {
     const storagePath = lesson.video.storagePath || masterPlaylistKey.replace(/\/master\.m3u8$/, '');
     const playlistPath = storagePath ? `${storagePath}/master.m3u8` : '';
     const token = playlistPath ? (0, video_delivery_1.createVideoToken)({
-        userId,
+        userId: userId || 'preview',
         lessonId: lesson.id,
         courseId: lesson.courseId.toString(),
         storagePath,

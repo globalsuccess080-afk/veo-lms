@@ -59,9 +59,9 @@ export const byCourse = [
 ]
 
 export const videoUrl = [
-  authenticate,
+  optionalAuth,
   asyncHandler(async (req: AuthRequest, res) => {
-    const url = await lessonService.getVideoUrl(param(req.params.id), req.user!.id, req.user!.role)
+    const url = await lessonService.getVideoUrl(param(req.params.id), req.user?.id, req.user?.role)
     sendSuccess(res, url)
   })
 ]

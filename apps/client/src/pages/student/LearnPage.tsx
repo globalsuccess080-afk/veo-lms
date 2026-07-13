@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
@@ -17,6 +17,7 @@ import { Skeleton } from '../../components/ui/Skeleton'
 import { getMyEnrollments } from '../../services/enrollment.service'
 import { LearnSkeleton } from '../../components/skeletons/student/LearnSkeleton'
 import { VideoProcessingPlaceholder } from '../../components/player/VideoProcessingPlaceholder'
+import { useAuthStore } from '../../store/authStore'
 
 interface CLesson { id: string; title: string; duration: number; isPreview: boolean }
 interface CSection { _id: string; title: string; lessons: CLesson[] }
@@ -24,6 +25,8 @@ interface CSection { _id: string; title: string; lessons: CLesson[] }
 export function LearnPage() {
     const { courseSlug, lessonId } = useParams<{ courseSlug: string; lessonId?: string }>()
     const navigate = useNavigate()
+    const location = useLocation()
+    const user = useAuthStore((s) => s.user)
     const [activeLessonId, setActiveLessonId] = useState(lessonId || '')
     const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 1024)
     const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -58,17 +61,17 @@ export function LearnPage() {
         },
         refetchIntervalInBackground: false,
     })
-    const { data: savedProgress } = useQuery({ queryKey: ['lesson-progress', currentLessonId], queryFn: () => getLessonProgress(currentLessonId), enabled: !!currentLessonId })
-    const { data: courseProgress, refetch } = useQuery({ queryKey: ['course-progress', course?.id], queryFn: () => getCourseProgress(course!.id), enabled: !!course?.id })
-    const { data: enrollments } = useQuery({ queryKey: ['my-enrollments'], queryFn: getMyEnrollments })
+    const { data: enrollments } = useQuery({ queryKey: ['my-enrollments'], queryFn: getMyEnrollments, enabled: !!user })
 
     const isEnrolled = enrollments?.some((e: any) => e.courseId === course?.id || e.course?._id === course?.id || e.course?.id === course?.id)
+    const { data: savedProgress } = useQuery({ queryKey: ['lesson-progress', currentLessonId], queryFn: () => getLessonProgress(currentLessonId), enabled: !!user && !!currentLessonId })
+    const { data: courseProgress, refetch } = useQuery({ queryKey: ['course-progress', course?.id], queryFn: () => getCourseProgress(course!.id), enabled: !!user && !!course?.id })
 
     const handleProgress = useCallback(async (seconds: number, completed: boolean) => {
-        if (!course || !currentLessonId || !lesson) return
+        if (!course || !currentLessonId || !lesson || !isEnrolled) return
         await updateProgress({ courseId: course.id, lessonId: currentLessonId, watchedSeconds: seconds, totalSeconds: lesson.duration, isCompleted: completed })
         refetch()
-    }, [course, currentLessonId, lesson, refetch])
+    }, [course, currentLessonId, lesson, isEnrolled, refetch])
 
     const selectLesson = (id: string) => {
         setActiveLessonId(id)
@@ -80,7 +83,7 @@ export function LearnPage() {
     const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null
 
     const markComplete = async (auto: boolean) => {
-        if (!course || !currentLessonId || !lesson) return
+        if (!course || !currentLessonId || !lesson || !isEnrolled) return
         await updateProgress({ courseId: course.id, lessonId: currentLessonId, watchedSeconds: lesson.duration, totalSeconds: lesson.duration, isCompleted: true })
         refetch()
         toast.success('Lesson completed!')
@@ -238,11 +241,11 @@ export function LearnPage() {
                                         <span className="flex items-center gap-1.5 text-sm text-success font-medium shrink-0 mt-1">
                                             <CheckCircle2 size={18} /> <span className="hidden sm:inline">Completed</span>
                                         </span>
-                                    ) : (
+                                    ) : isEnrolled ? (
                                         <Button variant="outline" size="sm" onClick={() => markComplete(false)} className="shrink-0 mt-1">
                                             <CheckCircle2 size={16} /> <span className="hidden sm:inline">Mark as complete</span>
                                         </Button>
-                                    )}
+                                    ) : null}
                                 </div>
 
                                 <LessonTabs
@@ -280,11 +283,11 @@ export function LearnPage() {
                                 </p>
 
                                 <Link
-                                    to={`/courses/${course.slug}`}
+                                    to={user ? `/courses/${course.slug}` : `/login?redirect=${encodeURIComponent(location.pathname + location.search)}`}
                                     className="inline-flex items-center justify-center rounded-xl bg-zinc-900 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-zinc-800 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0"
                                 >
                                     <ShoppingBag size={18} className="mr-2" />
-                                    Purchase Course
+                                    {user ? 'Purchase Course' : 'Login to Continue'}
                                 </Link>
                             </motion.div>
                         </div>

@@ -22,6 +22,7 @@ interface CourseCurriculumProps {
   courseSlug: string;
   totalLessons: number;
   isEnrolled?: boolean;
+  isLoggedIn?: boolean;
 }
 
 export function CourseCurriculum({
@@ -29,6 +30,7 @@ export function CourseCurriculum({
   courseSlug,
   totalLessons,
   isEnrolled,
+  isLoggedIn,
 }: CourseCurriculumProps) {
   const [open, setOpen] = useState<Set<string>>(
     () => new Set(sections.map((s) => s._id)),
@@ -189,6 +191,19 @@ export function CourseCurriculum({
                           key={lesson.id}
                           to={`/learn/${courseSlug}/${lesson.id}`}
                           className={`${rowClass} hover:bg-primary/5`}
+                        >
+                          {rowContent}
+                        </Link>
+                      );
+                    }
+
+                    if (!isLoggedIn) {
+                      const lessonPath = `/learn/${courseSlug}/${lesson.id}`;
+                      return (
+                        <Link
+                          key={lesson.id}
+                          to={`/login?redirect=${encodeURIComponent(lessonPath)}`}
+                          className={`${rowClass} hover:bg-primary/5 opacity-70`}
                         >
                           {rowContent}
                         </Link>

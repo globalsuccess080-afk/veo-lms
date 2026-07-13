@@ -152,7 +152,7 @@ export async function getLessonsByCourse(courseId: string) {
   return lessons.map(l => formatLesson(l as unknown as ILesson))
 }
 
-export async function getVideoUrl(id: string, userId: string, userRole?: string) {
+export async function getVideoUrl(id: string, userId?: string, userRole?: string) {
   const lesson = await Lesson.findById(id)
   if (!lesson) throw new ApiError(404, 'Lesson not found')
   await checkAccess(userId, userRole, lesson)
@@ -161,7 +161,7 @@ export async function getVideoUrl(id: string, userId: string, userRole?: string)
   const storagePath = lesson.video.storagePath || masterPlaylistKey.replace(/\/master\.m3u8$/, '')
   const playlistPath = storagePath ? `${storagePath}/master.m3u8` : ''
   const token = playlistPath ? createVideoToken({
-    userId,
+    userId: userId || 'preview',
     lessonId: lesson.id,
     courseId: lesson.courseId.toString(),
     storagePath,
